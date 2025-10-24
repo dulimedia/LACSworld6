@@ -4,12 +4,16 @@ import * as THREE from 'three';
 import { makeFacesBehave } from '../utils/makeFacesBehave';
 import { fixInvertedFacesSelective } from '../utils/fixInvertedFacesSelective';
 import { generateSceneReport, printReport } from '../debug/MeshInspector';
+import { useThree } from '@react-three/fiber';
 
 export function SingleEnvironmentMesh() {
+  const { gl } = useThree();
   const others = useGLTF('/models/environment/others2.glb');
   const frame = useGLTF('/models/environment/frame-raw-14.glb');
   const roof = useGLTF('/models/environment/roof and walls.glb');
   const stages = useGLTF('/models/environment/stages.glb');
+  
+  const shadowsEnabled = gl && (gl as any).shadowMap?.enabled !== false;
 
   useEffect(() => {
     if (others.scene) {
@@ -29,14 +33,18 @@ export function SingleEnvironmentMesh() {
             console.log(`  Mesh: ${mesh.name || 'unnamed'} (${vertCount} vertices)`);
           }
           
-          mesh.castShadow = true;
-          mesh.receiveShadow = true;
-          shadowCount++;
+          if (shadowsEnabled) {
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            shadowCount++;
+          }
           
           if (mesh.material) {
             const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
             materials.forEach((mat: any) => {
-              mat.shadowSide = THREE.FrontSide;
+              if (shadowsEnabled) {
+                mat.shadowSide = THREE.FrontSide;
+              }
               
               if (mat.normalMap) {
                 console.log(`  📄 Removed normalMap from ${mesh.name || 'unnamed'}`);
@@ -74,16 +82,19 @@ export function SingleEnvironmentMesh() {
         if ((child as THREE.Mesh).isMesh) {
           const mesh = child as THREE.Mesh;
           meshCount++;
-          mesh.castShadow = true;
-          mesh.receiveShadow = true;
           
-          if (mesh.material) {
-            if (Array.isArray(mesh.material)) {
-              mesh.material.forEach(mat => {
-                mat.shadowSide = THREE.FrontSide;
-              });
-            } else {
-              mesh.material.shadowSide = THREE.FrontSide;
+          if (shadowsEnabled) {
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            
+            if (mesh.material) {
+              if (Array.isArray(mesh.material)) {
+                mesh.material.forEach(mat => {
+                  mat.shadowSide = THREE.FrontSide;
+                });
+              } else {
+                mesh.material.shadowSide = THREE.FrontSide;
+              }
             }
           }
         }
@@ -102,16 +113,19 @@ export function SingleEnvironmentMesh() {
         if ((child as THREE.Mesh).isMesh) {
           const mesh = child as THREE.Mesh;
           meshCount++;
-          mesh.castShadow = true;
-          mesh.receiveShadow = true;
           
-          if (mesh.material) {
-            if (Array.isArray(mesh.material)) {
-              mesh.material.forEach(mat => {
-                mat.shadowSide = THREE.FrontSide;
-              });
-            } else {
-              mesh.material.shadowSide = THREE.FrontSide;
+          if (shadowsEnabled) {
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            
+            if (mesh.material) {
+              if (Array.isArray(mesh.material)) {
+                mesh.material.forEach(mat => {
+                  mat.shadowSide = THREE.FrontSide;
+                });
+              } else {
+                mesh.material.shadowSide = THREE.FrontSide;
+              }
             }
           }
         }
