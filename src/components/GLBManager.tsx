@@ -9,6 +9,7 @@ import * as THREE from 'three';
 import { useGLBState, type GLBNodeInfo } from '../store/glbState';
 import { useExploreState } from '../store/exploreState';
 import { SELECTED_MATERIAL_CONFIG, HOVERED_MATERIAL_CONFIG } from '../config/ghostMaterialConfig';
+import { logger } from '../utils/logger';
 
 interface GLBUnitProps {
   node: GLBNodeInfo;
@@ -28,13 +29,8 @@ const GLBUnit: React.FC<GLBUnitProps> = ({ node }) => {
   
   // Handle GLB loading errors gracefully
   if (error) {
-    console.warn(`⚠️ Failed to load GLB: ${node.key} at ${node.path}`, error);
+    logger.warn('GLB', '⚠️', `Failed to load GLB: ${node.key}`);
     return null;
-  }
-  
-  // Log successful load
-  if (scene && !node.isLoaded) {
-    console.log(`📦 GLBUnit loaded: ${node.key}`);
   }
 
   // Store original materials on first load
@@ -152,10 +148,9 @@ const GLBInitializer: React.FC = () => {
   useEffect(() => {
     // Initialize GLB nodes if not already done
     if (glbNodes.size === 0) {
-      console.log('🔧 GLBManager: Initializing GLB nodes...');
+      logger.log('LOADING', '🔧', 'GLBManager: Initializing GLB nodes...');
       initializeGLBNodes();
     } else {
-      console.log(`✅ GLBManager: ${glbNodes.size} nodes already initialized`);
     }
   }, [glbNodes.size, initializeGLBNodes]);
 
@@ -165,7 +160,6 @@ const GLBInitializer: React.FC = () => {
 export const GLBManager: React.FC = () => {
   const { glbNodes } = useGLBState();
   
-  console.log(`🎯 GLBManager: Rendering ${glbNodes.size} units`);
   
   return (
     <group>

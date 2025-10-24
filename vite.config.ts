@@ -10,7 +10,7 @@ export default defineConfig({
   base,
   server: {
     host: 'localhost',
-    port: 3175,
+    port: 3290,
     strictPort: false,
   },
   preview: {

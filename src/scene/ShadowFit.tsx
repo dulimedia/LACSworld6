@@ -86,6 +86,11 @@ export function useFitDirectionalLightShadow(
     const lightPos = light.position.clone();
     const lightTarget = light.target.getWorldPosition(tmp.tmpV);
     const up = new THREE.Vector3(0, 1, 0);
+    
+    if (!tmp.lightView || typeof tmp.lightView.makeLookAt !== 'function') {
+      return;
+    }
+    
     tmp.lightView.makeLookAt(lightPos, lightTarget, up).invert();
 
     tmp.boxLS.makeEmpty();
@@ -127,12 +132,17 @@ export function useFitDirectionalLightShadow(
   }
 
   useEffect(() => {
-    if (!light) return;
+    // Critical: Don't start frame loop if light doesn't exist or isn't ready
+    if (!light || !light.shadow || !light.shadow.camera) return;
     
     let frameId: number;
     const onFrame = () => {
-      updateShadowFrustum();
-      frameId = requestAnimationFrame(onFrame);
+      try {
+        updateShadowFrustum();
+        frameId = requestAnimationFrame(onFrame);
+      } catch (error) {
+        // Silent fail - WebGL context issues
+      }
     };
     frameId = requestAnimationFrame(onFrame);
     

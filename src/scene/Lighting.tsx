@@ -3,6 +3,7 @@ import { useThree } from "@react-three/fiber";
 import { DirectionalLight, OrthographicCamera, PCFSoftShadowMap } from "three";
 import { detectTier } from "../lib/graphics/tier";
 import { useFitDirectionalLightShadow } from "./ShadowFit";
+import { logger } from "../utils/logger";
 
 export interface LightingProps {
   shadowBias?: number;
@@ -17,11 +18,13 @@ export function Lighting({
 }: LightingProps = {}) {
   const { scene, gl } = useThree();
   const sunRef = useRef<DirectionalLight | null>(null);
+  const isMobileRef = useRef<boolean>(false);
 
   useEffect(() => {
     let cancelled = false;
 
     detectTier().then((tier) => {
+      isMobileRef.current = tier.startsWith('mobile');
       if (cancelled) return;
 
       const old = scene.children.filter(o => o.userData.__sunLight);
@@ -31,7 +34,7 @@ export function Lighting({
       sun.position.set(-40, 30, 20);
       sun.castShadow = true;
       
-      const mapSize = tier.startsWith('mobile') ? 2048 : 4096;
+      const mapSize = tier.startsWith('mobile') ? 1024 : 4096;
       sun.shadow.mapSize.set(mapSize, mapSize);
       sun.shadow.bias = shadowBias;
       sun.shadow.normalBias = shadowNormalBias;
@@ -54,7 +57,7 @@ export function Lighting({
 
       onLightCreated?.(sun);
 
-      console.log(`🌅 Sun shadow initialized: ${mapSize}×${mapSize}, bias=${shadowBias}, normalBias=${shadowNormalBias}, dynamic frustum enabled`);
+      logger.log('LOADING', '🌅', `Sun shadow initialized: ${mapSize}×${mapSize}, bias=${shadowBias}, normalBias=${shadowNormalBias}, dynamic frustum enabled`);
     });
 
     return () => { 
@@ -65,12 +68,15 @@ export function Lighting({
     };
   }, [scene, gl, shadowBias, shadowNormalBias, onLightCreated]);
 
-  useFitDirectionalLightShadow(sunRef.current, {
-    maxExtent: 100,
-    margin: 3,
-    mapSize: 4096,
-    snap: true
-  });
+  useFitDirectionalLightShadow(
+    isMobileRef.current ? null : sunRef.current,
+    {
+      maxExtent: 100,
+      margin: 3,
+      mapSize: 4096,
+      snap: true
+    }
+  );
 
   return null;
 }

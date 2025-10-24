@@ -63,7 +63,7 @@ export const useExploreState = create<ExploreState>((set, get) => ({
   showAvailableOnly: false,
   hoveredUnitKey: null,
   selectedUnitKey: null,
-  drawerOpen: false,
+  drawerOpen: true,
   unitDetailsOpen: false,
   show3DPopup: false,
   unitsByBuilding: {},
@@ -247,8 +247,14 @@ export const useExploreState = create<ExploreState>((set, get) => ({
 // Helper function to build the hierarchical structure from unit data
 export const buildUnitsIndex = (units: Map<string, UnitRecord>): Record<string, Record<string, string[]>> => {
   const index: Record<string, Record<string, string[]>> = {};
+  const seenUnits = new Set<string>();
   
   units.forEach((unit, unitKey) => {
+    if (unit.status === false) return;
+    
+    if (seenUnits.has(unit.unit_key)) return;
+    seenUnits.add(unit.unit_key);
+    
     const { building, floor } = unit;
     
     if (!index[building]) {

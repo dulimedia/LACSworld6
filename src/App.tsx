@@ -11,7 +11,7 @@ import { SingleEnvironmentMesh } from './components/SingleEnvironmentMesh';
 import PalmTreeInstancerSimple from './components/PalmTreeInstancerSimple';
 import UnitDetailPopup from './components/UnitDetailPopup';
 import { ExploreUnitsPanel } from './ui/ExploreUnitsPanel';
-import { UnifiedSidebar } from './components/UnifiedSidebar';
+import Sidebar from './ui/Sidebar/Sidebar';
 import { GLBManager } from './components/GLBManager';
 import { UnitDetailsPopup } from './components/UnitDetailsPopup';
 import { SelectedUnitOverlay } from './components/SelectedUnitOverlay';
@@ -400,7 +400,6 @@ function App() {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'd' || event.key === 'D') {
         if (sceneRef.current) {
-          console.log("🔍 Running material validation and duplicate audit...");
           validateAllMaterials(sceneRef.current);
           runDuplicateAudit(sceneRef.current);
         }
@@ -442,8 +441,8 @@ function App() {
     pathtracer: false,
     ptBounces: 5,
     composerScale: 1.0,
-    shadowBias: -0.00015,
-    shadowNormalBias: 0.6,
+    shadowBias: -0.00082,
+    shadowNormalBias: 0.40,
     showShadowHelper: false,
     polygonOffsetEnabled: true,
     polygonOffsetFactor: -1,
@@ -482,15 +481,12 @@ function App() {
   // Mobile device detection and optimization settings
   const deviceCapabilities = useMemo(() => {
     const caps = detectDevice();
-    console.log('🔍 Device Detection Results:', caps);
-    console.log('🔍 Will render shadows?', !caps.isMobile);
     return caps;
   }, []);
   
   // Force shadow initialization on app start - moved after deviceCapabilities definition
   useEffect(() => {
     // Ensure shadows are properly initialized when app starts - ALWAYS enable for all devices
-    console.log('🔥 App: Force initializing shadows on startup for ALL devices');
     // Shadow settings are now handled by SimpleShadowDebug component directly
   }, []);
   const mobileSettings = useMemo(() => getMobileOptimizedSettings(deviceCapabilities), [deviceCapabilities]);
@@ -519,7 +515,6 @@ function App() {
       // Add iOS low memory warning handler
       if (deviceCapabilities.isIOS) {
         const handleLowMemory = () => {
-          console.warn('🚨 Low memory warning detected on iOS');
           memoryManager.aggressiveCleanup();
           // Force reload of essential resources only
           setTimeout(() => {
@@ -553,7 +548,6 @@ function App() {
     const setupInitialTarget = () => {
       if (orbitControlsRef.current && orbitControlsRef.current.target && typeof orbitControlsRef.current.target.set === 'function') {
         if (!hasLogged) {
-          console.log('🎯 Camera controls initialized successfully');
           hasLogged = true;
         }
         orbitControlsRef.current.target.set(0, 0, 0);
@@ -575,14 +569,12 @@ function App() {
           clearTimeout(timeoutId);
         } else if (attempts >= maxAttempts) {
           clearInterval(interval);
-          console.log('⚠️ Camera controls timeout - initializing anyway for mobile compatibility');
           // Don't block the app - just set fallback target
           if (orbitControlsRef.current) {
             try {
               orbitControlsRef.current.target.set(0, 0, 0);
               orbitControlsRef.current.update();
             } catch (e) {
-              console.warn('Camera controls not ready, will initialize on user interaction');
             }
           }
         }
@@ -619,15 +611,14 @@ function App() {
     }
   }, [modelsLoading]);
 
-  // Fallback: hide loading screen after 8 seconds if something goes wrong (Safari iOS safety)
+  // Fallback: hide loading screen after 12 seconds if something goes wrong (Safari iOS safety)
   useEffect(() => {
     const fallbackTimer = setTimeout(() => {
-      console.warn('⚠️ Loading timeout reached (8s), forcing completion');
       setLoadingProgress(100);
       setLoadingPhase('complete');
       setEffectsReady(true);
       setTimeout(() => setModelsLoading(false), 300);
-    }, 8000);
+    }, 12000);
     
     return () => clearTimeout(fallbackTimer);
   }, []);
@@ -644,6 +635,29 @@ function App() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Add class to body for CSS-based sidebar transitions
+  useEffect(() => {
+    if (drawerOpen) {
+      document.body.classList.add('sidebar-open');
+    } else {
+      document.body.classList.remove('sidebar-open');
+    }
+  }, [drawerOpen]);
+
+  // Adjust camera when sidebar/drawer opens or closes
+  useEffect(() => {
+    if (!orbitControlsRef.current) return;
+
+    // Small delay to let the transition start
+    const timer = setTimeout(() => {
+      if (orbitControlsRef.current) {
+        orbitControlsRef.current.update();
+      }
+    }, 50);
+
+    return () => clearTimeout(timer);
+  }, [drawerOpen, deviceCapabilities.isMobile]);
 
   // Use CSV data if available, otherwise fallback data
   const hasValidUnitData = csvUnitData && Object.keys(csvUnitData).length > 0;
@@ -860,7 +874,6 @@ function App() {
   }, []);
 
   const handleZoomIn = useCallback(() => {
-    console.log('🔍 Zoom In button clicked');
     if (orbitControlsRef.current) {
       const controls = orbitControlsRef.current;
       const distanceBefore = controls.distance;
@@ -868,15 +881,12 @@ function App() {
       // Log distance after a brief delay to capture the change
       setTimeout(() => {
         const distanceAfter = controls.distance;
-        console.log(`🔍 ZoomIn → distance ${distanceBefore.toFixed(2)} → ${distanceAfter.toFixed(2)}`);
       }, 100);
     } else {
-      console.warn('⚠️ orbitControlsRef null (wire failure) - App.tsx:handleZoomIn');
     }
   }, []);
 
   const handleZoomOut = useCallback(() => {
-    console.log('🔍 Zoom Out button clicked');
     if (orbitControlsRef.current) {
       const controls = orbitControlsRef.current;
       const distanceBefore = controls.distance;
@@ -884,10 +894,8 @@ function App() {
       // Log distance after a brief delay to capture the change
       setTimeout(() => {
         const distanceAfter = controls.distance;
-        console.log(`🔍 ZoomOut → distance ${distanceBefore.toFixed(2)} → ${distanceAfter.toFixed(2)}`);
       }, 100);
     } else {
-      console.warn('⚠️ orbitControlsRef null (wire failure) - App.tsx:handleZoomOut');
     }
   }, []);
 
@@ -924,7 +932,6 @@ function App() {
     
     setLoadingPhase('initializing');
     setLoadingProgress(5);
-    console.log('🎬 Loading started...');
     
     // Simulate early progress to show activity
     const earlyProgress = setInterval(() => {
@@ -942,7 +949,6 @@ function App() {
     // Failsafe: force complete after 15 seconds on mobile (30s on desktop)
     const failsafeTimeout = setTimeout(() => {
       if (loadingPhase !== 'complete') {
-        console.warn('⚠️ Loading timeout reached, forcing completion');
         setLoadingPhase('complete');
         setLoadingProgress(100);
       }
@@ -959,31 +965,26 @@ function App() {
     const modelProgress = Math.round((loaded / total) * 55) + 15;
     setLoadingProgress(modelProgress);
     setLoadingPhase('loading-models');
-    console.log(`📦 Models: ${loaded}/${total} (${modelProgress}%)`);
     
     if (loaded >= total) {
       setLoadingPhase('validating-materials');
       setLoadingProgress(75);
-      console.log('🔍 Validating materials...');
       
       // Material validation phase
       setTimeout(() => {
         setLoadingPhase('compiling-shaders');
         setLoadingProgress(85);
-        console.log('⚡ Compiling shaders...');
         
         // Shader compilation phase
         setTimeout(() => {
           setLoadingPhase('enabling-effects');
           setLoadingProgress(95);
           setEffectsReady(true);
-          console.log('✨ Post-processing effects enabled');
           
           // Final phase - scene ready
           setTimeout(() => {
             setLoadingProgress(100);
             setLoadingPhase('complete');
-            console.log('🎬 Scene ready with post-processing');
             
             // Hide loading screen after brief pause
             setTimeout(() => {
@@ -999,11 +1000,13 @@ function App() {
     <SafariErrorBoundary>
       <div className="app-viewport">
         <div className="app-layout">
-          <div className="scene-shell">
+          <div 
+            className="scene-shell"
+          >
 {/* CSV loads in background - only show logo loading screen */}
         
         {modelsLoading && (
-          <div className="absolute inset-0 flex justify-center items-center z-30" 
+          <div className="fixed inset-0 flex justify-center items-center z-50" 
                style={{ 
                  background: 'white',
                  backdropFilter: 'none'
@@ -1075,7 +1078,6 @@ function App() {
           onTierChange={setRenderTier}
           onCreated={({ camera }) => {
             camera.lookAt(0, 0, 0);
-            console.log('📷 Camera initialized - position:', camera.position, 'looking at origin (0, 0, 0)');
           }}
         >
           {(tier) => (
@@ -1166,106 +1168,81 @@ function App() {
           </div>  {/* Close scene-shell */}
         
         
-        {/* Mobile Layout - Top controls, bottom camera */}
-        {!modelsLoading && deviceCapabilities.isMobile && (
-          <>
-            {/* Top Controls for Mobile */}
-            <div 
-              className="fixed top-14 left-14 right-14 z-40 flex justify-between items-start"
-              style={{
-                paddingTop: 'env(safe-area-inset-top)',
-                paddingLeft: 'env(safe-area-inset-left)',
-                paddingRight: 'env(safe-area-inset-right)'
-              }}
-            >
-              {/* Explore Suites Button - Top Left */}
-              <button
-                onClick={handleToggleExploreDrawer}
-                className="bg-white bg-opacity-90 backdrop-blur-md hover:bg-white hover:bg-opacity-95 text-gray-800 font-semibold py-3 px-6 rounded-lg shadow-lg border border-white border-opacity-50 hover:border-blue-300 flex items-center space-x-3 transition-all duration-200 hover:shadow-xl text-base"
-              >
-                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                <span>Explore Suites</span>
-                {drawerOpen ? (
-                  <svg className="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                  </svg>
-                ) : (
-                  <svg className="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                )}
-              </button>
-
-              {/* Request Button - Top Right */}
-              <button
-                onClick={handleRequestClick}
-                className="bg-white bg-opacity-90 backdrop-blur-md hover:bg-white hover:bg-opacity-95 text-gray-800 font-medium py-2 px-4 rounded-lg shadow-lg border border-white border-opacity-50 hover:border-blue-300 transition-all duration-200 hover:shadow-xl flex items-center space-x-2"
-                title="Submit a request"
-              >
-                <MessageCircle size={20} className="text-gray-600" />
-                <span>Lease a space</span>
-              </button>
-            </div>
-
-            {/* Bottom Camera Controls for Mobile */}
-            <div 
-              className="fixed bottom-14 left-1/2 transform -translate-x-1/2 z-40"
-              style={{
-                paddingBottom: 'env(safe-area-inset-bottom)'
-              }}
-            >
-              <NavigationControls
-                onRotateLeft={handleRotateLeft}
-                onRotateRight={handleRotateRight}
-                onZoomIn={handleZoomIn}
-                onZoomOut={handleZoomOut}
-                onResetView={handleResetView}
-              />
-            </div>
-          </>
+        {/* Mobile Layout - Top button to open sidebar */}
+        {!modelsLoading && deviceCapabilities.isMobile && !drawerOpen && (
+          <button
+            onClick={handleToggleExploreDrawer}
+            className="fixed bottom-6 left-4 z-40 bg-blue-500 text-white font-semibold py-2 px-3 rounded-lg shadow-lg hover:bg-blue-600 flex items-center space-x-2 transition-all duration-200 text-sm"
+            style={{
+              paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))'
+            }}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+            <span>Suites</span>
+          </button>
         )}
 
-        {/* Desktop Layout - Camera controls only in bottom right */}
-        {!modelsLoading && !deviceCapabilities.isMobile && (
-          <div className="fixed bottom-6 right-6 z-40">
-            <div className="scale-90 origin-bottom-right">
-              <NavigationControls
-                onRotateLeft={handleRotateLeft}
-                onRotateRight={handleRotateRight}
-                onZoomIn={handleZoomIn}
-                onZoomOut={handleZoomOut}
-                onResetView={handleResetView}
-              />
+        {/* Camera Controls - Bottom Center (Desktop) / Right Side (Mobile) */}
+        {!modelsLoading && (
+          <div 
+            className={deviceCapabilities.isMobile 
+              ? "fixed right-4 z-40" 
+              : "fixed bottom-6 left-1/2 -translate-x-1/2 z-40"}
+            style={deviceCapabilities.isMobile ? {
+              top: drawerOpen ? 'calc((100vh - 45vh) / 2)' : '50vh',
+              transform: 'translateY(-50%)',
+              transition: 'top 300ms cubic-bezier(0.2, 0.8, 0.2, 1)'
+            } : {}}
+          >
+            <div className={deviceCapabilities.isMobile
+              ? "bg-white/90 backdrop-blur-md rounded-lg shadow-xl border border-black/5 p-2 flex flex-col gap-2"
+              : "bg-white/90 backdrop-blur-md rounded-lg shadow-xl border border-black/5 p-3"}>
+              <div className={deviceCapabilities.isMobile ? "flex flex-col gap-2" : "grid grid-cols-5 gap-2"}>
+                <button
+                  className="rounded-lg border border-black/10 bg-white px-2 py-1.5 text-xs shadow-sm hover:shadow transition flex items-center justify-center"
+                  onClick={handleRotateLeft}
+                  title="Rotate Left"
+                >
+                  <RotateCcw size={14} />
+                </button>
+                <button
+                  className="rounded-lg border border-black/10 bg-white px-2 py-1.5 text-xs shadow-sm hover:shadow transition flex items-center justify-center"
+                  onClick={handleRotateRight}
+                  title="Rotate Right"
+                >
+                  <RotateCw size={14} />
+                </button>
+                <button
+                  className="rounded-lg border border-black/10 bg-white px-2 py-1.5 text-xs shadow-sm hover:shadow transition flex items-center justify-center"
+                  onClick={handleZoomIn}
+                  title="Zoom In"
+                >
+                  <ZoomIn size={14} />
+                </button>
+                <button
+                  className="rounded-lg border border-black/10 bg-white px-2 py-1.5 text-xs shadow-sm hover:shadow transition flex items-center justify-center"
+                  onClick={handleZoomOut}
+                  title="Zoom Out"
+                >
+                  <ZoomOut size={14} />
+                </button>
+                <button
+                  className="rounded-lg border border-black/10 bg-white px-2 py-1.5 text-xs shadow-sm hover:shadow transition flex items-center justify-center"
+                  onClick={handleResetView}
+                  title="Reset View"
+                >
+                  <Home size={14} />
+                </button>
+              </div>
             </div>
           </div>
         )}
 
-        {/* Unified Sidebar - Desktop only */}
-        {!deviceCapabilities.isMobile && (
-          <UnifiedSidebar
-            isOpen={drawerOpen}
-            onClose={handleCloseDrawer}
-            onToggleSidebar={handleToggleExploreDrawer}
-          />
-        )}
-
-
-        {/* Mobile Explore Panel (keep old panel for mobile) */}
-        {deviceCapabilities.isMobile && (
-          <ExploreUnitsPanel
-            isOpen={drawerOpen}
-            onClose={handleCloseDrawer}
-            onRequest={(unitKey, unitName) => {
-              setRequestUnitKey(unitKey);
-              setRequestUnitName(unitName);
-              setShowSingleUnitRequest(true);
-            }}
-            onExpandFloorplan={handleExpandFloorplan}
-            onCloseFilters={() => {
-              setIsFilterDropdownOpen(false);
-              setIsTopFilterDropdownOpen(false);
-            }}
-          />
+        {/* New Sidebar - All devices */}
+        {!modelsLoading && (
+          <Sidebar />
         )}
 
         

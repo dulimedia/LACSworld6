@@ -16,6 +16,11 @@ export function Effects({ tier, enabled = true }: EffectsProps) {
   const isMobile = tier.startsWith('mobile');
 
   if (!enabled || !gl || gl.domElement?.isConnected === false) return null;
+  
+  if (!gl.getContext || gl.isContextLost?.()) {
+    console.warn('⚠️ Effects: WebGL context is lost, skipping effects');
+    return null;
+  }
 
   return (
     <EffectComposer multisampling={0} disableNormalPass={true}>

@@ -17,7 +17,6 @@ export const CanvasClickHandler: React.FC = () => {
       if (target === canvas) {
         // Close explore units panel when clicking off into 3D scene
         setDrawerOpen(false);
-        console.log('🖱️ Canvas background clicked - explore units panel closed');
       }
     };
 

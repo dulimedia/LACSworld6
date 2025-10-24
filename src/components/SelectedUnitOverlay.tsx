@@ -280,7 +280,6 @@ export const SelectedUnitOverlay: React.FC = () => {
           const occlusionFactors = overlayMeshesRef.current.map(mesh => mesh.userData.occlusionFactor).filter(f => f !== undefined);
           const avgOcclusion = occlusionFactors.length > 0 ? occlusionFactors.reduce((a, b) => a + b, 0) / occlusionFactors.length : 1.0;
           
-        console.log(`✨ Created highlight overlay for ${selectionType}: ${selectionName} (${unitsToHighlight.length} units, ${overlayMeshesRef.current.length} meshes, avg occlusion: ${avgOcclusion.toFixed(2)})`);
       } catch (error) {
         console.error('Error creating overlay:', error);
       }

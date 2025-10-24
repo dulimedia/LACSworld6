@@ -24,6 +24,7 @@ import { useUnitStore } from '../stores/useUnitStore';
 import { UnitHoverPreview } from '../components/UnitHoverPreview';
 import { FloorplanViewer } from '../components/FloorplanViewer';
 import { preloadFloorFloorplans } from '../services/floorplanService';
+import { logger } from '../utils/logger';
 
 /**
  * Utility: normalize a filename like "F-100.glb" => "f-100"
@@ -193,8 +194,6 @@ const FloorNode: React.FC<FloorNodeProps> = ({
       // Update GLB state for 3D visualization (check if camera is not already animating)
       const { isCameraAnimating } = useGLBState.getState();
       
-      console.log('🎮 ExplorePanel: isCameraAnimating check:', isCameraAnimating);
-      
       if (!isCameraAnimating) {
         let glbUnitName = unitData.unit_name;
         
@@ -203,7 +202,7 @@ const FloorNode: React.FC<FloorNodeProps> = ({
           glbUnitName = "Studio O.M.";
         }
         
-        console.log('🎯 Camera focusing on unit:', { 
+        logger.log('CAMERA', '🎯', 'Camera focusing on unit:', { 
           building: unitData.building, 
           floor: unitData.floor, 
           unit: glbUnitName 
@@ -212,7 +211,6 @@ const FloorNode: React.FC<FloorNodeProps> = ({
         
         const { centerCameraOnUnit } = useGLBState.getState();
         centerCameraOnUnit(unitData.building, unitData.floor, glbUnitName);
-        console.log('📷 Camera centering triggered for:', glbUnitName);
       }
       
       // Navigate to details view if we have the handler
@@ -545,7 +543,7 @@ export const ExploreUnitsPanel: React.FC<ExploreUnitsPanelProps> = ({
         templateParams
       );
 
-      console.log('✅ Individual unit request sent successfully:', response);
+      logger.log('REQUEST', '✅', 'Individual unit request sent successfully:', response);
       
       setIsSendingRequest(false);
       alert('Your unit request has been sent successfully!');
@@ -560,7 +558,7 @@ export const ExploreUnitsPanel: React.FC<ExploreUnitsPanelProps> = ({
       setShowUnitRequestModal(false);
       
     } catch (error) {
-      console.error('❌ Unit request failed:', error);
+      logger.error('Unit request failed:', error);
       setIsSendingRequest(false);
       alert(`Failed to send request: ${error.text || error.message || 'Unknown error'}. Please try again.`);
     }
@@ -1005,7 +1003,6 @@ export const ExploreUnitsPanel: React.FC<ExploreUnitsPanelProps> = ({
               // Update GLB state for 3D visualization
               const { selectUnit, isCameraAnimating } = useGLBState.getState();
               
-              console.log('🎮 ExplorePanel GLB tree: isCameraAnimating check:', isCameraAnimating);
               
               // Only proceed if camera is not already animating (prevent duplicate calls)
               if (!isCameraAnimating) {
@@ -1026,7 +1023,7 @@ export const ExploreUnitsPanel: React.FC<ExploreUnitsPanelProps> = ({
               const finalUnitData = unitData || getUnitData(actualUnitKey);
               
               // Add console log to debug
-              console.log('🔍 Setting suite details:', {
+              logger.log('UI', '🔍', 'Setting suite details:', {
                 actualUnitKey,
                 normalizedUnitName,
                 hasUnitData: !!unitData,
@@ -1358,7 +1355,7 @@ export const ExploreUnitsPanel: React.FC<ExploreUnitsPanelProps> = ({
 
       {/* Sliding Content Container */}
       <div className="flex-1 relative overflow-hidden">
-        {console.log('🎬 SLIDING TRANSFORM:', { 
+        {logger.log('UI', '🎬', 'SLIDING TRANSFORM:', { 
           currentView, 
           transform: currentView === 'explore' ? '0%' : currentView === 'details' ? '-100%' : '-200%'
         })}
@@ -1482,7 +1479,6 @@ export const ExploreUnitsPanel: React.FC<ExploreUnitsPanelProps> = ({
             }}
           >
             <div className="h-full bg-white">
-              {console.log('🔍 DETAILS PANEL RENDERING:', { currentView, selectedUnitDetails })}
               {/* Details Header */}
               <div className="bg-white border-b border-gray-200 px-6 py-4">
                 <div className="flex items-center justify-between">
@@ -1598,7 +1594,7 @@ export const ExploreUnitsPanel: React.FC<ExploreUnitsPanelProps> = ({
                     {/* Floorplan Viewer */}
                     {selectedUnitDetails ? (
                       <>
-                        {console.log('📋 ExploreUnitsPanel: Rendering FloorplanViewer for:', {
+                        {logger.log('FLOORPLAN', '📋', 'Rendering FloorplanViewer for:', {
                           unit: selectedUnitDetails.unit_name,
                           floorplan_url: selectedUnitDetails.floorplan_url,
                           floorPlanUrl: selectedUnitDetails.floorPlanUrl,
@@ -1920,7 +1916,7 @@ export const ExploreUnitsPanel: React.FC<ExploreUnitsPanelProps> = ({
                       setCurrentView('explore');
                       
                     } catch (error) {
-                      console.error('❌ Email sending failed:', error);
+                      logger.error('Email sending failed:', error);
                       setIsSendingRequest(false);
                       alert(`Failed to send request. Please try again.`);
                     }

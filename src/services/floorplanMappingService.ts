@@ -1,6 +1,8 @@
 // Intelligent floorplan mapping service
 // Maps unit names to available floorplan files with fuzzy matching
 
+import { logger } from '../utils/logger';
+
 interface FloorplanMapping {
   unitPattern: string;
   fileName: string;
@@ -313,7 +315,6 @@ export function findFloorplanForUnit(unitName: string, unitData?: any): string |
   
   // If no unit name provided, can't do matching
   if (!unitName) {
-    console.warn('⚠️ No unit name provided for floorplan lookup');
     return null;
   }
 
@@ -366,7 +367,6 @@ export function findFloorplanForUnit(unitName: string, unitData?: any): string |
   // Return the highest confidence match
   if (mappings.length > 0) {
     const bestMatch = mappings.sort((a, b) => b.confidence - a.confidence)[0];
-    console.log('✅ FloorplanMapping: Found match via intelligent mapping:', bestMatch.fileName);
     return `floorplans/converted/${bestMatch.fileName}`;
   }
 
@@ -381,9 +381,7 @@ export function findFloorplanForUnit(unitName: string, unitData?: any): string |
     const beforeCorrection = path;
     path = path.replace(/\.jpg$/, '.png').replace(/\.jpeg$/, '.png').replace(/\.webp$/, '.png');
     if (beforeCorrection !== path) {
-      console.log('🔧 FloorplanMapping: Auto-corrected extension:', beforeCorrection, '→', path);
     }
-    console.log('⚠️ FloorplanMapping: Using CSV fallback for', unitName, ':', path);
     return path;
   }
 
@@ -392,14 +390,13 @@ export function findFloorplanForUnit(unitName: string, unitData?: any): string |
     return `floorplans/converted/F1_Floorplan.png`;
   }
 
-  console.warn('❌ FloorplanMapping: No floorplan found for:', unitName);
+  logger.warn('FLOORPLAN', '❌', `No floorplan found for: ${unitName}`);
   return null;
 }
 
 // Get floorplan URL for a unit (main export function)
 export function getFloorplanUrl(unitName: string, unitData?: any): string | null {
   const result = findFloorplanForUnit(unitName, unitData);
-  console.log('🗺️ FloorplanMappingService: getFloorplanUrl called', { unitName, unitData, result });
   return result;
 }
 

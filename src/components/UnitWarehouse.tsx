@@ -10,6 +10,7 @@ import FresnelMaterial from '../materials/FresnelMaterial';
 import PalmTreeInstancerSimple from './PalmTreeInstancerSimple';
 import { assetUrl } from '../lib/assets';
 import { PerfFlags } from '../perf/PerfFlags';
+import { logger } from '../utils/logger';
 
 class UnitWarehouseErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error?: any }> {
   constructor(props: { children: React.ReactNode }) {
@@ -22,7 +23,7 @@ class UnitWarehouseErrorBoundary extends React.Component<{ children: React.React
   }
 
   componentDidCatch(error: any, errorInfo: any) {
-    console.error('UnitWarehouse runtime error:', error, errorInfo);
+    logger.error('UnitWarehouse runtime error:', error, errorInfo);
   }
 
   render() {
@@ -95,7 +96,7 @@ const SingleModelGLB: React.FC<{
   const { scene, materials } = useGLTF(modelUrl, useDraco);
 
   if (!scene) {
-    console.error('Scene not loaded for:', fileName);
+    logger.error('Scene not loaded for:', fileName);
     return null; 
   }
 
@@ -114,7 +115,7 @@ const SingleModelGLB: React.FC<{
         setIsLoading(false);
       }
     } catch (e) {
-      console.error('Error in SingleModel load detection effect:', e);
+      logger.error('Error in SingleModel load detection effect:', e);
     }
   }, [scene, isLoading]);
 
@@ -159,7 +160,7 @@ const SingleModelGLB: React.FC<{
 
           // Transparent buildings - enhanced material with subtle physical properties
           if (fileName.includes('transparent buildings')) {
-            console.log('🟢 Applying enhanced glass material to transparent buildings');
+            logger.log('GLB', '🟢', 'Applying enhanced glass material to transparent buildings');
             
             const glassMaterial = new THREE.MeshPhysicalMaterial({
               color: 0xA9BCB8,
@@ -254,7 +255,7 @@ const SingleModelGLB: React.FC<{
   }, [scene, fileName, onLoad]);
 
   if (loadError) {
-    console.error('Model load error for:', fileName, loadError);
+    logger.error('Model load error for:', fileName, loadError);
     return null; 
   }
 
@@ -279,7 +280,7 @@ const SingleModelFBX: React.FC<{
   const materials = {};
 
   if (!scene) {
-    console.error('Scene not loaded for:', fileName);
+    logger.error('Scene not loaded for:', fileName);
     return null; 
   }
 
@@ -294,7 +295,7 @@ const SingleModelFBX: React.FC<{
         setIsLoading(false);
       }
     } catch (e) {
-      console.error('Error in SingleModelFBX load detection effect:', e);
+      logger.error('Error in SingleModelFBX load detection effect:', e);
     }
   }, [scene, isLoading]);
 
@@ -564,7 +565,7 @@ const UnitWarehouseComponent: React.FC<UnitWarehouseProps> = ({
     }
 
     if (meshCount === 0) {
-      console.warn(`⚠️ Box model ${unitId} has no meshes!`);
+      logger.warn('GLB', '⚠️', `Box model ${unitId} has no meshes!`);
     }
   }, [boxFiles.length, onLoadingProgress, allModels.length]);
 
@@ -651,7 +652,7 @@ const UnitWarehouseComponent: React.FC<UnitWarehouseProps> = ({
     if (hiddenByAvailabilityCount > 0) {
     }
     if (activeUnits.length > 0 && activatedCount === 0) {
-      console.warn(`❌ FILTER SET but NO MESHES ACTIVATED! Available models:`, boxLoadedModels.map(m => m.name));
+      logger.warn('GLB', '❌', `FILTER SET but NO MESHES ACTIVATED! Available models:`, boxLoadedModels.map(m => m.name));
     }
   }, [activeFilter, boxLoadedModels, activeUnitsList, isUnitActive, isUnitAvailable, activeMaterial]);
 
@@ -829,7 +830,7 @@ const UnitWarehouseComponent: React.FC<UnitWarehouseProps> = ({
             />
           ));
         } catch (error) {
-          console.error('Error rendering box models:', error);
+          logger.error('Error rendering box models:', error);
           return null; 
         }
       })()}
