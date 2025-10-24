@@ -23,7 +23,11 @@ export function Effects({ tier, enabled = true }: EffectsProps) {
   }
 
   if (isMobile) {
-    return null;
+    return (
+      <EffectComposer multisampling={0} disableNormalPass={true}>
+        <ToneMapping mode={THREE.ACESFilmicToneMapping} exposure={2.2} />
+      </EffectComposer>
+    );
   }
 
   return (

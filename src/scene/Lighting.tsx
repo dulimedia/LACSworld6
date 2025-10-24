@@ -30,9 +30,10 @@ export function Lighting({
       const old = scene.children.filter(o => o.userData.__sunLight);
       old.forEach(o => scene.remove(o));
 
-      const sun = new DirectionalLight(0xffffff, 6.5);
+      const isMobile = tier.startsWith('mobile');
+      const sun = new DirectionalLight(0xffffff, isMobile ? 3.5 : 6.5);
       sun.position.set(-40, 30, 20);
-      sun.castShadow = true;
+      sun.castShadow = !isMobile;
       
       const mapSize = tier.startsWith('mobile') ? 1024 : 4096;
       sun.shadow.mapSize.set(mapSize, mapSize);
@@ -52,6 +53,13 @@ export function Lighting({
       sun.userData.__sunLight = true;
       scene.add(sun);
       sunRef.current = sun;
+      
+      if (isMobile) {
+        const ambient = new (await import('three')).AmbientLight(0xffffff, 1.8);
+        ambient.userData.__ambientLight = true;
+        scene.add(ambient);
+        logger.log('LOADING', '💡', 'Mobile: Added ambient light for fill');
+      }
 
       gl.shadowMap.type = PCFSoftShadowMap;
 
@@ -62,7 +70,7 @@ export function Lighting({
 
     return () => { 
       cancelled = true;
-      const lights = scene.children.filter(o => o.userData.__sunLight);
+      const lights = scene.children.filter(o => o.userData.__sunLight || o.userData.__ambientLight);
       lights.forEach(l => scene.remove(l)); 
       sunRef.current = null;
     };
