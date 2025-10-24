@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useThree } from "@react-three/fiber";
-import { DirectionalLight, OrthographicCamera, PCFSoftShadowMap } from "three";
+import { DirectionalLight, OrthographicCamera, PCFSoftShadowMap, AmbientLight } from "three";
 import { detectTier } from "../lib/graphics/tier";
 import { useFitDirectionalLightShadow } from "./ShadowFit";
 import { logger } from "../utils/logger";
@@ -55,7 +55,7 @@ export function Lighting({
       sunRef.current = sun;
       
       if (isMobile) {
-        const ambient = new (await import('three')).AmbientLight(0xffffff, 1.8);
+        const ambient = new AmbientLight(0xffffff, 1.8);
         ambient.userData.__ambientLight = true;
         scene.add(ambient);
         logger.log('LOADING', '💡', 'Mobile: Added ambient light for fill');
