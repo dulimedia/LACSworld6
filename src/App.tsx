@@ -46,6 +46,7 @@ import type { Tier } from './lib/graphics/tier';
 import { ErrorLogDisplay } from './components/ErrorLogDisplay';
 import { PerfFlags } from './perf/PerfFlags';
 import { PerformanceGovernorComponent } from './components/PerformanceGovernorComponent';
+import { log as debugLog, SAFE } from './lib/debug';
 
 
 // Component to capture scene and gl refs + setup safety
@@ -377,6 +378,10 @@ const DetailsSidebar: React.FC<{
 function App() {
   const [canvasReady, setCanvasReady] = useState(false);
   const { selectedUnit, hoveredUnit, setSelectedUnit, setHoveredUnit } = useUnitStore();
+  
+  useEffect(() => {
+    debugLog.info('App mounted', { SAFE, isMobile: PerfFlags.isMobile, tier: PerfFlags.tier });
+  }, []);
   const { drawerOpen, setDrawerOpen, selectedUnitKey, getUnitData, unitDetailsOpen, setUnitDetailsOpen, show3DPopup, setShow3DPopup, hoveredUnitKey } = useExploreState();
   const { setCameraControlsRef } = useGLBState();
   
@@ -1222,7 +1227,7 @@ function App() {
               <PerformanceGovernorComponent />
 
               {/* Post-processing Effects - enabled on desktop only */}
-              {effectsReady && !PerfFlags.isMobile && !deviceCapabilities.isMobile && !PerfFlags.isIOS && debugState.ao && !debugState.pathtracer && (
+              {!SAFE && effectsReady && !PerfFlags.isMobile && !deviceCapabilities.isMobile && !PerfFlags.isIOS && debugState.ao && !debugState.pathtracer && (
                 <Effects tier={renderTier} enabled={debugState.ao} />
               )}
 
