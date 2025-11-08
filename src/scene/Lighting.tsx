@@ -24,7 +24,8 @@ export function Lighting({
   useEffect(() => {
     let cancelled = false;
 
-    detectTier().then((tier) => {
+    const setupLighting = () => {
+      const tier = PerfFlags.tier === 'mobileLow' ? 'mobile-low' : 'desktop-high';
       const isMobileLow = tier === 'mobile-low';
       const isMobileHigh = tier === 'mobile-high';
       const isMobile = isMobileLow || isMobileHigh;
@@ -114,7 +115,9 @@ export function Lighting({
       onLightCreated?.(sun);
 
       logger.log('LOADING', '🌅', `Lighting configured for ${tier} (shadows: ${sun.castShadow})`);
-    });
+    };
+
+    setupLighting();
 
     return () => { 
       cancelled = true;

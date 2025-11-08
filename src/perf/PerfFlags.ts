@@ -12,7 +12,9 @@ export const PerfFlags = (() => {
   const isSimulatorSize = window.innerWidth < 600 || window.innerHeight < 600;
   
   const isMobile = isMobileUA || (isTouchDevice && isNarrowViewport) || hasLowMemory || isSimulatorSize;
-  const tier: Tier = isMobile ? "mobileLow" : "desktopHigh";
+  const tier: Tier = (isMobile || isIOS) ? "mobileLow" : "desktopHigh";
+  
+  console.log('🔧 PerfFlags initialized:', { isIOS, isMobile, tier, userAgent: userAgent.substring(0, 50) });
   
   const qualityTier: QualityTier = pickTier();
 
@@ -38,7 +40,7 @@ export const PerfFlags = (() => {
     anisotropy: qualityTier === 'LOW' ? 1 : 2,
     maxTextureSize: qualityTier === 'LOW' ? 1024 : qualityTier === 'BALANCED' ? 2048 : 4096,
     pixelRatio: qualityTier === 'LOW' ? 1.2 : qualityTier === 'BALANCED' ? 1.3 : 2.0,
-    powerPreference: 'high-performance' as const,
+    powerPreference: (isIOS ? 'low-power' : 'high-performance') as const,
     
     useLogDepth: false,
     originRebase: false,

@@ -99,11 +99,15 @@ export function RootCanvas({ children, gl: glProp, onTierChange, ...canvasProps 
     return null;
   }
 
+  const isMobile = typeof window !== 'undefined' && matchMedia('(max-width:768px)').matches;
+  
   return (
     <Canvas
       {...canvasProps}
+      className="scene-canvas"
       gl={createRenderer}
-      dpr={[1, tier.startsWith('mobile') ? 1.0 : 2]}
+      dpr={isMobile ? [1, 1.25] : [1, tier.startsWith('mobile') ? 1.0 : 2]}
+      frameloop={isMobile ? 'demand' : canvasProps.frameloop || 'always'}
       shadows={canvasProps.shadows ?? (tier !== 'mobile-low')}
     >
       <MobilePerfScope />

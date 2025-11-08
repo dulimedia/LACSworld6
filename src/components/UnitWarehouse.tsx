@@ -97,7 +97,7 @@ const SingleModelGLB: React.FC<{
     return null;
   }
 
-  const useDraco = true;
+  const useDraco = !PerfFlags.isIOS;
   const { scene, materials } = useGLTF(modelUrl, useDraco);
 
   if (!scene) {
@@ -131,8 +131,14 @@ const SingleModelGLB: React.FC<{
       const whiteMaterial = new THREE.MeshStandardMaterial({ color: 'white' });
 
       // Process materials immediately for transparent buildings and shadows
+      console.log('🔍 Processing model:', fileName, 'with', scene.children.length, 'children');
+      
       scene.traverse((child) => {
         if (child instanceof THREE.Mesh) {
+          if (fileName.includes('stages')) {
+            console.log('🎭 Found STAGES mesh:', child.name, child.type);
+          }
+          
           // Store original material
           if (Array.isArray(child.material)) {
             (child as any).userData.originalMaterial = (child.material as any).map((m: any) =>
@@ -201,6 +207,35 @@ const SingleModelGLB: React.FC<{
             }
           }
 
+          // Stages - FORCE fully opaque and visible (critical fix)
+          if (fileName.includes('stages')) {
+            child.visible = true;
+            child.frustumCulled = false;
+            child.renderOrder = 0;
+            
+            if (child.material) {
+              if (Array.isArray(child.material)) {
+                child.material.forEach((mat: any) => {
+                  mat.transparent = false;
+                  mat.opacity = 1.0;
+                  mat.depthWrite = true;
+                  mat.visible = true;
+                  mat.colorWrite = true;
+                  mat.needsUpdate = true;
+                });
+              } else {
+                const mat = child.material as any;
+                mat.transparent = false;
+                mat.opacity = 1.0;
+                mat.depthWrite = true;
+                mat.visible = true;
+                mat.colorWrite = true;
+                mat.needsUpdate = true;
+              }
+            }
+            
+            console.log('✅ STAGES mesh configured:', child.name, 'visible:', child.visible);
+          }
 
           // Keep standard materials for stability - physical materials can be added selectively later
           child.userData.materialOptimized = true;
@@ -512,12 +547,16 @@ const UnitWarehouseComponent: React.FC<UnitWarehouseProps> = ({
     const useDraco = PerfFlags.useDracoCompressed;
     const folder = useDraco ? 'environment/compressed' : 'environment';
     
-    return [
+    const models = [
       `${folder}/frame${useDraco ? '' : '-raw-14'}.glb`,
       `${folder}/others2.glb`,
       `${folder}/roof and walls.glb`,
       `${folder}/stages.glb`
     ];
+    
+    console.log('🔧 Loading environment models:', models);
+    
+    return models;
   }, []);
 
   const boxFiles = useMemo(() => {
@@ -540,19 +579,25 @@ const UnitWarehouseComponent: React.FC<UnitWarehouseProps> = ({
 
   const loadedModels = useMemo(() => loadedModelsRef.current, [loadedModelsRef]);
 
-  // Preload all models to start downloads immediately
+  // CRITICAL FIX: Sequential loading with delays to prevent iOS memory spike
   useEffect(() => {
     const preloadModels = async () => {
-      // Preload environment models
-      allModels.forEach(path => {
-        useGLTF.preload(assetUrl(`models/${path}`), true);
-      });
+      // Load environment models sequentially with 300ms delays (iOS needs breathing room)
+      for (let i = 0; i < allModels.length; i++) {
+        const path = allModels[i];
+        useGLTF.preload(assetUrl(`models/${path}`), false);
+        if (PerfFlags.isIOS && i < allModels.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
+      }
       
-      // Preload box models (only on desktop)
+      // Skip box models entirely on mobile (iOS crashes with 97 units)
       if (!PerfFlags.isMobile) {
-        boxFiles.forEach(path => {
-          useGLTF.preload(assetUrl(`models/${path}`), true);
-        });
+        for (let i = 0; i < Math.min(boxFiles.length, 20); i++) {
+          const path = boxFiles[i];
+          useGLTF.preload(assetUrl(`models/${path}`), false);
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
       }
     };
     

@@ -272,8 +272,20 @@ const CameraController: React.FC<{
   selectedUnit: string | null;
   controlsRef: React.RefObject<any>;
 }> = ({ controlsRef }) => {
+  const { camera, size } = useThree();
+  const isMobile = typeof window !== 'undefined' && matchMedia('(max-width:768px)').matches;
+  
   useEffect(() => {
-    // Simplified camera controller initialization without verbose logging
+    camera.position.set(isMobile ? 9 : -10, isMobile ? 7 : 10, isMobile ? 9 : -14);
+    camera.lookAt(0, 0, 0);
+  }, [camera, isMobile]);
+
+  useEffect(() => {
+    camera.aspect = size.width / size.height;
+    camera.updateProjectionMatrix();
+  }, [size.width, size.height, camera]);
+  
+  useEffect(() => {
     const checkControls = () => {
       if (controlsRef?.current) {
         return true;
@@ -281,7 +293,6 @@ const CameraController: React.FC<{
       return false;
     };
     
-    // Check immediately, then once more after delay if needed
     if (!checkControls()) {
       const timeout = setTimeout(() => {
         checkControls();
@@ -295,6 +306,7 @@ const CameraController: React.FC<{
     <CameraControls
       ref={controlsRef}
       makeDefault
+      target={[0, 0, 0]}
       minPolarAngle={0}
       maxPolarAngle={Math.PI * 0.48}
       minDistance={8}
@@ -305,6 +317,7 @@ const CameraController: React.FC<{
       polarRotateSpeed={0.15}
       draggingSmoothTime={0.4}
       smoothTime={0.4}
+      enablePan={!isMobile}
     />
   );
 };
@@ -1208,8 +1221,8 @@ function App() {
               {/* Performance Governor - mobile FPS enforcement */}
               <PerformanceGovernorComponent />
 
-              {/* Post-processing Effects - enabled on desktop, disabled on mobile */}
-              {effectsReady && !deviceCapabilities.isMobile && !PerfFlags.isIOS && debugState.ao && !debugState.pathtracer && (
+              {/* Post-processing Effects - enabled on desktop only */}
+              {effectsReady && !PerfFlags.isMobile && !deviceCapabilities.isMobile && !PerfFlags.isIOS && debugState.ao && !debugState.pathtracer && (
                 <Effects tier={renderTier} enabled={debugState.ao} />
               )}
 

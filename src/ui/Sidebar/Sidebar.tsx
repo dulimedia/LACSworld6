@@ -7,25 +7,18 @@ import { useSidebarState } from './useSidebarState';
 import { useExploreState } from '../../store/exploreState';
 import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { detectDevice } from '../../utils/deviceDetection';
+import { useBottomSheet } from '../../hooks/useBottomSheet';
+import { cn } from '../../lib/utils';
 
 export default function Sidebar() {
   const { tab, setTab, view, setView, floorPlanExpanded, setFloorPlanExpanded } = useSidebarState();
   const { drawerOpen, setDrawerOpen } = useExploreState();
-  const isMobile = detectDevice().isMobile;
+  const isMobile = typeof window !== 'undefined' && matchMedia('(max-width:768px)').matches;
 
   const open = drawerOpen;
   const setOpen = setDrawerOpen;
 
-  useEffect(() => {
-    if (isMobile && open) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isMobile, open]);
+  useBottomSheet(isMobile && open);
 
   if (isMobile) {
     return (
@@ -34,14 +27,7 @@ export default function Sidebar() {
           role="complementary"
           aria-label="Suite Controls"
           aria-expanded={open}
-          className={`fixed left-0 right-0 bottom-0 z-50 
-            bg-white rounded-t-2xl shadow-2xl
-            transition-transform duration-300 ease-[cubic-bezier(.2,.8,.2,1)]
-            ${open ? 'translate-y-0' : 'translate-y-full'}
-            h-[45vh] flex flex-col`}
-          style={{
-            paddingBottom: 'env(safe-area-inset-bottom)'
-          }}
+          className={cn('sidebar', open && 'is-open', 'flex flex-col')}
         >
           <div className="flex-shrink-0 px-3 pt-2 pb-1 border-b border-black/5">
             <div className="flex items-center justify-between mb-2">
