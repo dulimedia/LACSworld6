@@ -416,6 +416,22 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
           const mesh = child as THREE.Mesh;
           meshCount++;
           
+          mesh.visible = true;
+          mesh.frustumCulled = false;
+          
+          if (mesh.material) {
+            const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+            materials.forEach((mat: any) => {
+              mat.visible = true;
+              mat.transparent = false;
+              mat.opacity = 1.0;
+              mat.side = THREE.FrontSide;
+              mat.depthWrite = true;
+              mat.depthTest = true;
+              mat.needsUpdate = true;
+            });
+          }
+          
           if (shadowsEnabled) {
             mesh.castShadow = true;
             mesh.receiveShadow = true;
@@ -444,6 +460,8 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
           }
         }
       });
+      
+      console.log(`✅ Stages configured: ${meshCount} meshes, all set to visible`);
       
       // Mobile: Final cleanup after all models processed
       if (isMobile) {

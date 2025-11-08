@@ -43,11 +43,11 @@
   display: block;
 }
 
-/* Sidebar: ALWAYS right-docked; same component, responsive width */
+/* Sidebar: ALWAYS left-docked; same component, responsive width */
 .sidebar {
   position: fixed;
   top: 0;
-  right: 0;
+  left: 0;
   height: var(--vh);
   width: var(--sidebar-w);
   padding: var(--sidebar-pad);
@@ -56,20 +56,20 @@
   -webkit-overflow-scrolling: touch;
   background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(12px);
-  box-shadow: -12px 0 30px rgba(0, 0, 0, 0.12);
+  box-shadow: 12px 0 30px rgba(0, 0, 0, 0.12);
   transform: translateX(0);
   transition: transform 300ms cubic-bezier(0.2, 0.8, 0.2, 1);
-  border-left: 1px solid rgba(0, 0, 0, 0.05);
+  border-right: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .sidebar.is-collapsed {
-  transform: translateX(calc(100% - 18px));
+  transform: translateX(calc(-100% + 18px));
 }
 
 /* Collapse/Expand button – never clipped */
 .sidebar-toggle {
   position: fixed;
-  right: calc(var(--sidebar-w) + 8px);
+  left: calc(var(--sidebar-w) + 8px);
   top: 16px;
   z-index: var(--ui-z);
   background: white;
@@ -91,7 +91,7 @@
 }
 
 .sidebar.is-collapsed ~ .sidebar-toggle {
-  right: 26px;
+  left: 26px;
 }
 
 /* FAB cluster – centered horizontally relative to viewport, not sidebar */
