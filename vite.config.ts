@@ -2,15 +2,15 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 // Use VITE_BASE_PATH env var for base path (Vercel sets this dynamically)
-// Fallback to '/' for Vercel, '/LACSWORLD/' for GitHub Pages
-const base = process.env.VITE_BASE_PATH || '/'
+// Fallback to '/LACS-WORLD-3/' for GitHub Pages
+const base = process.env.VITE_BASE_PATH || '/LACS-WORLD-3/'
 
 export default defineConfig({
   plugins: [react()],
   base,
   server: {
     host: '0.0.0.0',
-    port: 3185,
+    port: 3296,
     strictPort: true,
   },
   preview: {
