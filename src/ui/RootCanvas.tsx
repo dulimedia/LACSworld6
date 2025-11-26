@@ -11,6 +11,7 @@ import { installErrorProbe } from '../perf/ErrorProbe';
 import { installDegradePolicy } from '../perf/FrameGovernor';
 import { log, SAFE } from '../lib/debug';
 import { MobileDiagnostics } from '../debug/mobileDiagnostics';
+import { PerfFlags } from '../perf/PerfFlags';
 
 export type RootCanvasProps = Omit<CanvasProps, 'children' | 'gl' | 'dpr'> & {
   children: ReactNode | ((tier: Tier) => ReactNode);
@@ -177,13 +178,16 @@ export function RootCanvas({ children, gl: glProp, onTierChange, ...canvasProps 
     log.info('Canvas element ready, creating renderer...');
     canvasRef.current = canvas;
     
-    canvas.addEventListener('webglcontextlost', (e) => {
+    canvas.addEventListener('webglcontextlost', (e: Event) => {
       e.preventDefault();
+      console.warn('🚨 WEBGL CONTEXT LOST', e);
       log.warn('webglcontextlost event');
       MobileDiagnostics.warn('root-canvas', 'webglcontextlost');
+      alert('3D view stopped due to device limits (WebGL context lost).');
     }, false);
     
     canvas.addEventListener('webglcontextrestored', () => {
+      console.warn('✅ WEBGL CONTEXT RESTORED');
       log.info('webglcontextrestored event');
       MobileDiagnostics.log('root-canvas', 'webglcontextrestored');
     }, false);
@@ -263,9 +267,10 @@ export function RootCanvas({ children, gl: glProp, onTierChange, ...canvasProps 
           {...canvasProps}
           className="scene-canvas"
           gl={createRenderer}
-          dpr={SAFE ? [1, 1] : (isMobile ? [1, 1.25] : [1, tier.startsWith('mobile') ? 1.0 : 2])}
-          frameloop={SAFE || isMobile ? 'demand' : canvasProps.frameloop || 'always'}
-          shadows={SAFE ? false : (canvasProps.shadows ?? (tier !== 'mobile-low'))}
+          dpr={[1, PerfFlags.DPR_MAX]}
+          frameloop={SAFE || PerfFlags.isMobile ? 'demand' : canvasProps.frameloop || 'always'}
+          performance={PerfFlags.isMobile ? { min: 0.25, max: 0.75, debounce: 200 } : { min: 0.5, max: 1, debounce: 40 }}
+          shadows={SAFE ? false : PerfFlags.SHADOWS_ENABLED}
         >
           <MobilePerfScope />
           <AdaptivePerf tier={tier} />

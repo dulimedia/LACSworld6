@@ -26,7 +26,11 @@ export const PerfFlags = (() => {
     isSimulatorSize,
   });
   
-  const qualityTier: QualityTier = pickTier();
+  const qualityTier: QualityTier = isMobile ? 'LOW' : pickTier();
+  
+  const isLow = qualityTier === 'LOW';
+  const isBalanced = qualityTier === 'BALANCED';
+  const isHigh = qualityTier === 'HIGH';
 
   return {
     tier,
@@ -36,29 +40,34 @@ export const PerfFlags = (() => {
     isIOS,
     isTouch: isTouchDevice,
     
-    DPR_MAX: qualityTier === 'LOW' ? 1.2 : qualityTier === 'BALANCED' ? 1.3 : 2.0,
-    SHADOW_MAP_SIZE: qualityTier === 'LOW' ? 1024 : qualityTier === 'BALANCED' ? 2048 : 4096,
-    SHADOWS_ENABLED: qualityTier !== 'LOW',
-    MAX_TEXTURE_DIM: qualityTier === 'LOW' ? 1024 : qualityTier === 'BALANCED' ? 2048 : 4096,
-    SHADOW_MAX_EXTENT: qualityTier === 'LOW' ? 100 : qualityTier === 'BALANCED' ? 180 : 210,
-    SHADOW_MARGIN: qualityTier === 'LOW' ? 4 : qualityTier === 'BALANCED' ? 5.5 : 6,
-    SHADOW_BIAS: qualityTier === 'LOW' ? -0.0005 : qualityTier === 'BALANCED' ? -0.002 : -0.006,
-    SHADOW_NORMAL_BIAS: qualityTier === 'LOW' ? 0.15 : qualityTier === 'BALANCED' ? 0.3 : 0.35,
+    // 🔥 Aggressive mobile settings - DPR = 1.0 only on mobile
+    DPR_MAX: isLow ? 1.0 : isBalanced ? 1.3 : 2.0,
+    pixelRatio: isLow ? 1.0 : isBalanced ? 1.3 : 2.0,
     
-    dynamicShadows: false,
+    // 🔥 Texture & shadow caps - no shadows at all on mobile
+    maxTextureSize: isLow ? 1024 : isBalanced ? 2048 : 4096,
+    MAX_TEXTURE_DIM: isLow ? 1024 : isBalanced ? 2048 : 4096,
+    SHADOW_MAP_SIZE: isLow ? 0 : isBalanced ? 2048 : 4096,
+    SHADOWS_ENABLED: !isLow,
+    SHADOW_MAX_EXTENT: isLow ? 0 : isBalanced ? 180 : 210,
+    SHADOW_MARGIN: isLow ? 0 : isBalanced ? 5.5 : 6,
+    SHADOW_BIAS: isLow ? 0 : isBalanced ? -0.002 : -0.006,
+    SHADOW_NORMAL_BIAS: isLow ? 0 : isBalanced ? 0.3 : 0.35,
+    
+    // 🔥 Post FX flags - none on mobile
+    dynamicShadows: !isLow && isHigh,
     ssr: false,
-    ssgi: false,
-    ao: qualityTier === 'HIGH',
-    bloom: qualityTier !== 'LOW',
-    antialiasing: false,
-    anisotropy: qualityTier === 'LOW' ? 1 : 2,
-    maxTextureSize: qualityTier === 'LOW' ? 1024 : qualityTier === 'BALANCED' ? 2048 : 4096,
-    pixelRatio: qualityTier === 'LOW' ? 1.2 : qualityTier === 'BALANCED' ? 1.3 : 2.0,
-    powerPreference: (isIOS ? 'low-power' : 'high-performance') as const,
+    ssgi: !isLow && isHigh,
+    ao: !isLow && isHigh,
+    bloom: !isLow && isHigh,
+    
+    // 🔥 Renderer knobs
+    antialiasing: !isLow && !isMobile,
+    anisotropy: isLow ? 1 : isBalanced ? 2 : 8,
+    powerPreference: (isMobile ? 'low-power' : 'high-performance') as const,
     
     useLogDepth: false,
     originRebase: false,
-    
     useDracoCompressed: false,
   };
 })();
