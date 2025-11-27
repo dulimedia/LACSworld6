@@ -30,7 +30,9 @@ export default defineConfig({
         manualChunks: undefined,
       },
     },
+    copyPublicDir: true,
   },
+  publicDir: 'public',
   optimizeDeps: {
     esbuildOptions: {
       target: 'esnext',

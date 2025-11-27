@@ -638,7 +638,7 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
 }
 
 function MobileEnvironment() {
-  console.log('📱 MobileEnvironment: Loading lightweight environment (GLB)');
+  console.log('📱 MobileEnvironment: Loading full environment (all 10 models)');
   
   const road = useDracoGLTF(assetUrl('models/environment/road.glb'));
   const hqSidewalk = useDracoGLTF(assetUrl('models/environment/hq sidewalk 2.glb'));
@@ -647,6 +647,9 @@ function MobileEnvironment() {
   const transparentBuildings = useDracoGLTF(assetUrl('models/environment/transparent buildings.glb'));
   const accessory = useDracoGLTF(assetUrl('models/environment/accessory concrete.glb'));
   const frame = useDracoGLTF(assetUrl('models/environment/frame-raw-14.glb'));
+  const palms = useDracoGLTF(assetUrl('models/environment/palms.glb'));
+  const stages = useDracoGLTF(assetUrl('models/environment/stages.glb'));
+  const roof = useDracoGLTF(assetUrl('models/environment/roof and walls.glb'));
 
 
   const optimizeModel = (scene: THREE.Object3D) => {
@@ -711,6 +714,18 @@ function MobileEnvironment() {
     if (accessory.scene) optimizeModel(accessory.scene);
   }, [accessory.scene]);
 
+  useEffect(() => {
+    if (palms.scene) optimizeModel(palms.scene);
+  }, [palms.scene]);
+
+  useEffect(() => {
+    if (stages.scene) optimizeModel(stages.scene);
+  }, [stages.scene]);
+
+  useEffect(() => {
+    if (roof.scene) optimizeModel(roof.scene);
+  }, [roof.scene]);
+
   return (
     <>
       {road.scene && <primitive object={road.scene} />}
@@ -720,6 +735,9 @@ function MobileEnvironment() {
       {transparentBuildings.scene && <primitive object={transparentBuildings.scene} />}
       {accessory.scene && <primitive object={accessory.scene} />}
       {frame.scene && <primitive object={frame.scene} />}
+      {palms.scene && <primitive object={palms.scene} />}
+      {stages.scene && <primitive object={stages.scene} />}
+      {roof.scene && <primitive object={roof.scene} />}
     </>
   );
 }

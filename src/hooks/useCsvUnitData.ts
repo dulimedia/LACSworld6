@@ -53,7 +53,7 @@ class CsvDataCache {
     }
     
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
     
     try {
       const response = await fetch(finalUrl, { 
@@ -151,7 +151,7 @@ class CsvDataCache {
     } catch (error) {
       clearTimeout(timeoutId);
       if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error('CSV fetch timeout after 15 seconds');
+        throw new Error('CSV fetch timeout after 8 seconds');
       }
       throw error;
     }
@@ -184,6 +184,7 @@ export function useCsvUnitData(url: string = assetUrl('unit-data.csv')) {
     } catch (e: any) {
       console.error('🔍 [CSV Debug] Fetch error:', e);
       setError(e.message);
+      setData({});
     } finally {
       setLoading(false);
     }
