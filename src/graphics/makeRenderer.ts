@@ -38,6 +38,7 @@ async function smokeTestWebGPU(renderer: any): Promise<boolean> {
 function createWebGLRenderer(canvas: HTMLCanvasElement, tier: string): THREE.WebGLRenderer {
   const isMobile = tier.startsWith('mobile');
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome|CriOS|FxiOS/.test(navigator.userAgent);
   const isMobileLow = tier === 'mobile-low';
   
   const config: any = {
@@ -49,41 +50,27 @@ function createWebGLRenderer(canvas: HTMLCanvasElement, tier: string): THREE.Web
     preserveDrawingBuffer: false,
     failIfMajorPerformanceCaveat: false,
     stencil: false,
-    depth: true
+    depth: true,
+    premultipliedAlpha: false
   };
   
-  if (isIOS && isMobileLow) {
-    console.log('🍎 iOS mobile-low: attempting WebGL1 fallback');
-    const gl1Context = canvas.getContext('webgl', { 
-      alpha: false,
-      antialias: false,
-      powerPreference: 'low-power',
-      preserveDrawingBuffer: false,
-      stencil: false,
-      failIfMajorPerformanceCaveat: false
-    });
-    
-    if (gl1Context) {
-      config.context = gl1Context;
-    }
-  }
+  console.log(`🎨 Creating WebGL renderer (tier: ${tier}, iOS: ${isIOS}, Safari: ${isSafari})`);
   
   const renderer = new THREE.WebGLRenderer(config);
   
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMapping = (isIOS && isSafari) ? THREE.LinearToneMapping : THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.0;
   renderer.useLegacyLights = false;
   renderer.setClearColor(0x000000, 0);
   
+  if (isIOS && isSafari) {
+    console.log('🍎 Safari iOS: Using LinearToneMapping for compatibility');
+  }
+  
   renderer.shadowMap.enabled = false;
   renderer.shadowMap.type = THREE.PCFShadowMap;
   renderer.shadowMap.autoUpdate = false;
-  
-  const context = renderer.getContext();
-  if (context.getExtension) {
-    context.getExtension('EXT_color_buffer_float');
-  }
   
   let DPR = 1.0;
   if (tier === 'mobile-high') {
