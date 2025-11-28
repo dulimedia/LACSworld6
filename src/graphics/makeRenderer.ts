@@ -45,27 +45,69 @@ function createWebGLRenderer(canvas: HTMLCanvasElement, tier: string): THREE.Web
     canvas,
     alpha: false,
     antialias: false,
-    powerPreference: isMobile ? 'low-power' : 'high-performance',
+    powerPreference: (isIOS && isSafari) ? 'default' : (isMobile ? 'low-power' : 'high-performance'),
     logarithmicDepthBuffer: false,
     preserveDrawingBuffer: false,
-    failIfMajorPerformanceCaveat: false,
+    failIfMajorPerformanceCaveat: (isIOS && isSafari) ? true : false,
     stencil: false,
     depth: true,
     premultipliedAlpha: false
   };
   
   console.log(`🎨 Creating WebGL renderer (tier: ${tier}, iOS: ${isIOS}, Safari: ${isSafari})`);
+  console.log(`🎨 Config: powerPreference=${config.powerPreference}, failIfMajorPerformanceCaveat=${config.failIfMajorPerformanceCaveat}`);
   
-  const renderer = new THREE.WebGLRenderer(config);
+  try {
+    const renderer = new THREE.WebGLRenderer(config);
+    
+    if (!renderer.getContext() || renderer.getContext().isContextLost()) {
+      throw new Error('WebGL context creation failed or lost');
+    }
+    
+    console.log('✅ WebGL context created successfully');
+    return configureRenderer(renderer, canvas, tier, isIOS, isSafari);
+  } catch (error) {
+    console.error('❌ WebGL context creation failed:', error);
+    
+    const fallbackConfig = {
+      canvas,
+      alpha: false,
+      antialias: false,
+      powerPreference: 'default',
+      failIfMajorPerformanceCaveat: false
+    };
+    
+    console.log('🔄 Attempting fallback WebGL context creation');
+    const renderer = new THREE.WebGLRenderer(fallbackConfig);
+    return configureRenderer(renderer, canvas, tier, isIOS, isSafari);
+  }
+}
+
+function configureRenderer(renderer: THREE.WebGLRenderer, canvas: HTMLCanvasElement, tier: string, isIOS: boolean, isSafari: boolean): THREE.WebGLRenderer {
   
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = (isIOS && isSafari) ? THREE.LinearToneMapping : THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.0;
+  
+  if (isIOS && isSafari) {
+    renderer.toneMapping = THREE.NoToneMapping;
+    renderer.toneMappingExposure = 1.0;
+    console.log('🍎 Safari iOS: Using NoToneMapping for maximum compatibility');
+  } else {
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.0;
+  }
+  
   renderer.useLegacyLights = false;
   renderer.setClearColor(0x000000, 0);
   
-  if (isIOS && isSafari) {
-    console.log('🍎 Safari iOS: Using LinearToneMapping for compatibility');
+  try {
+    const testScene = new THREE.Scene();
+    const testCamera = new THREE.Camera();
+    renderer.compile(testScene, testCamera);
+    console.log('✅ Tone mapping validated successfully');
+  } catch (error) {
+    console.warn('⚠️ Tone mapping validation failed, falling back to NoToneMapping:', error);
+    renderer.toneMapping = THREE.NoToneMapping;
+    renderer.toneMappingExposure = 1.0;
   }
   
   renderer.shadowMap.enabled = false;
