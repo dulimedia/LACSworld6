@@ -473,7 +473,6 @@ function App() {
     unitName: string;
     unitData?: any;
   } | null>(null);
-  const [isResizing, setIsResizing] = useState(false);
   
   // Camera controls ref for navigation
   const orbitControlsRef = useRef<CameraControls>(null);
@@ -776,15 +775,6 @@ function App() {
       console.log('❌ Removing floorplan-expanded class');
       document.body.classList.remove('floorplan-expanded');
     }
-    
-    // Very brief visual indicator during transition start
-    // Canvas aspect ratio updates after transition completes
-    setIsResizing(true);
-    const timer = setTimeout(() => {
-      console.log('⏱️ Resize transition complete');
-      setIsResizing(false);
-    }, 100);
-    return () => clearTimeout(timer);
   }, [floorPlanExpanded]);
 
   // Adjust camera when sidebar/drawer opens or closes
@@ -1253,18 +1243,6 @@ function App() {
           <div 
             className="scene-shell"
           >
-            {isResizing && (
-              <div 
-                className="absolute inset-0 z-20 pointer-events-none"
-                style={{
-                  backdropFilter: 'blur(8px)',
-                  background: 'rgba(255, 255, 255, 0.3)',
-                  transition: 'opacity 150ms ease-in-out'
-                }}
-              >
-                {console.log('🌫️ Blur overlay rendering')}
-              </div>
-            )}
 {/* CSV loads in background - logo screen moved outside viewport */}
         
         {error && (

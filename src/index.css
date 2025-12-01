@@ -160,6 +160,11 @@ body {
 
 /* Mobile: 3D scene stays full screen, sidebar overlays on top */
 @media (max-width: 768px) {
+  .app-viewport {
+    background: transparent;
+    padding: 0;
+  }
+  
   .scene-shell {
     left: 0 !important;
     right: 0 !important;
