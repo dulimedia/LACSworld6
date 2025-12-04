@@ -6,19 +6,30 @@ import { SuiteDetailsTab } from './SuiteDetailsTab';
 import { useSidebarState } from './useSidebarState';
 import { useExploreState } from '../../store/exploreState';
 import { useGLBState } from '../../store/glbState';
+import { useUnitStore } from '../../stores/useUnitStore';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { MobileDiagnostics } from '../../debug/mobileDiagnostics';
 
 export default function Sidebar() {
   const { tab, setTab, view, setView, floorPlanExpanded, setFloorPlanExpanded } = useSidebarState();
-  const { drawerOpen, setDrawerOpen } = useExploreState();
-  const { clearSelection, cameraControlsRef } = useGLBState();
+  const {
+    drawerOpen,
+    setDrawerOpen,
+    setSelected: setExploreSelected,
+    setHovered: setExploreHovered,
+  } = useExploreState();
+  const { clearSelection, cameraControlsRef, resetCameraAnimation } = useGLBState();
+  const { setSelectedUnit: setGlobalSelectedUnit, setHoveredUnit: setGlobalHoveredUnit } = useUnitStore();
   const asideRef = useRef<HTMLElement | null>(null);
   const isMobile = detectDevice().isMobile;
 
   const collapsed = !drawerOpen;
   const setCollapsed = (value: boolean) => {
+    if (value && view === 'details') {
+      handleBackToExplore();
+    }
+
     setDrawerOpen(!value);
 
     if (value && floorPlanExpanded) {
@@ -30,11 +41,22 @@ export default function Sidebar() {
     // Clear GLB selection (dehighlight box)
     clearSelection();
     
-    // Reset camera to home position
+    // Reset camera animation state to ensure clean state
+    resetCameraAnimation();
+    
+    // Reset camera to home position with smooth animation
     if (cameraControlsRef?.current) {
-      // Use instant reset on mobile to prevent WebGL context loss
-      const isMobile = window.innerWidth < 768;
-      cameraControlsRef.current.reset(!isMobile); // false = instant on mobile, true = animated on desktop
+      // Enable smooth animation on both mobile and desktop
+      cameraControlsRef.current.reset(true); // true = smooth animation on all platforms
+    }
+
+    // Reset explore/hover state so selecting the same unit works again
+    setExploreSelected(null);
+    setExploreHovered(null);
+    setGlobalSelectedUnit(null);
+    setGlobalHoveredUnit(null);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('unit-hover-clear'));
     }
     
     // Navigate back to explore view

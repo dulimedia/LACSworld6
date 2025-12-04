@@ -2,7 +2,7 @@
  * See ./docs/AGENT_SPEC.md (§10 Acceptance) and ./docs/INTERACTION_CONTRACT.md (§3-4).
  * Do not change ids/schema without updating docs.
  */
-import React, { useEffect, useRef, useMemo } from 'react';
+import React, { useEffect, useRef, useMemo, useLayoutEffect } from 'react';
 import { useGLTF } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -98,6 +98,15 @@ const GLBUnit: React.FC<GLBUnitProps> = React.memo(({ node }) => {
   const originalMaterialsRef = useRef<Map<string, THREE.Material | THREE.Material[]>>(new Map());
   const fadeProgressRef = useRef(0);
   const targetStateRef = useRef<'none' | 'selected' | 'hovered' | 'filtered'>('none');
+  const hasAppliedInitialHideRef = useRef(false);
+
+  // Ensure the GLB stays hidden until our fade/material logic takes over.
+  useLayoutEffect(() => {
+    if (groupRef.current && !hasAppliedInitialHideRef.current) {
+      groupRef.current.visible = false;
+      hasAppliedInitialHideRef.current = true;
+    }
+  }, []);
 
   useEffect(() => {
     if (scene && originalMaterialsRef.current.size === 0) {
@@ -117,11 +126,11 @@ const GLBUnit: React.FC<GLBUnitProps> = React.memo(({ node }) => {
   const { setSelected } = useExploreState();
   
   useEffect(() => {
-    if (groupRef.current && !node.isLoaded) {
+    if (groupRef.current) {
       updateGLBObject(node.key, groupRef.current);
       MobileDiagnostics.log('glb', 'Registered GLB group', { node: node.key });
     }
-  }, [node.key, node.isLoaded, updateGLBObject]);
+  }, [node.key, updateGLBObject]);
 
   useEffect(() => {
     if (isSelected) {
@@ -141,21 +150,18 @@ const GLBUnit: React.FC<GLBUnitProps> = React.memo(({ node }) => {
     const targetProgress = targetStateRef.current !== 'none' ? 1 : 0;
     const fadeSpeed = 1 / FADE_DURATION;
     
+    // ATOMIC FRAME SYNC: Set visibility before fade calculations to prevent flash gap
+    groupRef.current.visible = targetProgress > 0;
+    
     if (fadeProgressRef.current !== targetProgress) {
       if (fadeProgressRef.current < targetProgress) {
         fadeProgressRef.current = Math.min(1, fadeProgressRef.current + delta * fadeSpeed);
       } else {
         fadeProgressRef.current = Math.max(0, fadeProgressRef.current - delta * fadeSpeed);
       }
+    }
 
-      // Make the group visible when animating, but only if we have some opacity
-      if (fadeProgressRef.current > 0.01) {
-        groupRef.current.visible = true;
-      } else if (fadeProgressRef.current === 0) {
-        groupRef.current.visible = false;
-      }
-
-      groupRef.current.traverse((child) => {
+    groupRef.current.traverse((child) => {
         if (child instanceof THREE.Mesh) {
           const originalMaterial = originalMaterialsRef.current.get(child.uuid);
           
@@ -164,8 +170,8 @@ const GLBUnit: React.FC<GLBUnitProps> = React.memo(({ node }) => {
             if (!child.material || !(child.material as any).__isAnimatedMaterial) {
               (sharedMaterial as any).__isAnimatedMaterial = true;
               child.material = sharedMaterial;
-              // Start with immediate visibility to prevent white flash
-              sharedMaterial.opacity = 0.3;
+              // Start with 0 opacity and fade in to prevent white flash
+              sharedMaterial.opacity = 0;
               sharedMaterial.emissiveIntensity = 0;
             }
             const mat = child.material as THREE.MeshStandardMaterial;
@@ -190,8 +196,8 @@ const GLBUnit: React.FC<GLBUnitProps> = React.memo(({ node }) => {
             if (!child.material || !(child.material as any).__isAnimatedMaterial) {
               (sharedMaterial as any).__isAnimatedMaterial = true;
               child.material = sharedMaterial;
-              // Start with immediate visibility to prevent white flash
-              sharedMaterial.opacity = 0.3;
+              // Start with 0 opacity and fade in to prevent white flash
+              sharedMaterial.opacity = 0;
               sharedMaterial.emissiveIntensity = 0;
             }
             const mat = child.material as THREE.MeshStandardMaterial;
@@ -209,8 +215,7 @@ const GLBUnit: React.FC<GLBUnitProps> = React.memo(({ node }) => {
           }
         }
       });
-    }
-  });
+    });
 
   // Material cleanup handled globally now - don't dispose shared materials per-component
   // Don't dispose useGLTF scenes - they're cached by drei internally

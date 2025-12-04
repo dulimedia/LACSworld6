@@ -23,11 +23,11 @@ export const TransitionMask = () => {
       // Show dark overlay immediately
       setShowMask(true);
       
-      // Hide it after a very short duration (just enough to cover the flash)
+      // Hide it after full fade duration to match GLBManager fade timing
       timeoutRef.current = setTimeout(() => {
         setShowMask(false);
-        console.log('✅ Transition mask: Flash window covered');
-      }, 80); // 80ms should cover any flash
+        console.log('✅ Transition mask: Full fade window covered');
+      }, 350);
     }
     
     lastSelectionRef.current = currentSelection;
@@ -53,29 +53,13 @@ export const TransitionMask = () => {
         left: 0,
         width: '100%',
         height: '100%',
-        backgroundColor: 'rgba(0, 0, 0, 0.2)', // Very subtle dark overlay
+        backgroundColor: 'rgba(0, 0, 0, 0.22)',
         zIndex: 9997, // Below loading overlay but above everything else
         pointerEvents: 'none',
-        transition: 'opacity 0.05s ease-out',
+        transition: 'opacity 0.2s ease-out',
       }}
     >
-      {/* Optional debug indicator */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 10,
-          left: 10,
-          background: 'rgba(0,0,0,0.7)',
-          color: 'white',
-          padding: '2px 6px',
-          borderRadius: '3px',
-          fontSize: '10px',
-          fontFamily: 'monospace',
-          opacity: 0.5,
-        }}
-      >
-        🎭 MASK
-      </div>
+      {/* Debug indicator removed for production */}
     </div>
   );
 };

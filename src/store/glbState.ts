@@ -36,8 +36,6 @@ export interface GLBState {
   isCameraAnimating: boolean;
   lastCameraTarget: string | null;
   
-  // Selection debounce management
-  selectionTimer: NodeJS.Timeout | null;
   
   // Hover state
   hoveredUnit: string | null;
@@ -121,7 +119,6 @@ export const useGLBState = create<GLBState>((set, get) => ({
   cameraControlsRef: null,
   isCameraAnimating: false,
   lastCameraTarget: null,
-  selectionTimer: null,
 
   // Actions
   initializeGLBNodes: () => {
@@ -207,9 +204,10 @@ export const useGLBState = create<GLBState>((set, get) => ({
         }
       }
       
+      const isFirstLoad = !node.isLoaded;
       set({ 
         glbNodes: newNodes, 
-        loadedCount: loadedCount + 1 
+        loadedCount: loadedCount + (isFirstLoad ? 1 : 0) 
       });
     }
   },
@@ -285,43 +283,37 @@ export const useGLBState = create<GLBState>((set, get) => ({
   },
 
   selectUnit: (building: string | null, floor: string | null, unit: string | null, skipCameraAnimation = false) => {
-    const { glbNodes, isCameraAnimating } = get();
+    const { glbNodes } = get();
     
     console.log('🔍 selectUnit called:', { building, floor, unit });
     
-    // CRITICAL FIX: Prevent rapid double/triple clicks from breaking functionality
-    const SELECTION_DEBOUNCE_MS = 250; // Prevent rapid clicking
-    const selectionTimer = setTimeout(() => {
-      // Reset all GLBs to invisible first
-      glbNodes.forEach((node, key) => {
-        get().setGLBState(key, 'invisible');
-      });
-      
-      if (building && unit && (floor !== null)) {
-        // Set only the specific unit GLB to glowing
-        const unitGLB = get().getGLBByUnit(building, floor, unit);
-        
-        if (unitGLB) {
-          get().setGLBState(unitGLB.key, 'glowing');
-          
-          // Only animate camera on initial selection, not when restoring state
-          if (!skipCameraAnimation) {
-            get().centerCameraOnUnit(building, floor, unit);
-          }
-        } else {
-          console.warn('⚠️ Unit GLB not found for:', buildNodeKey(building, floor, unit));
-        }
-      }
-      
-      set({ 
-        selectedBuilding: building,
-        selectedFloor: floor,
-        selectedUnit: unit,
-        selectionTimer: null
-      });
-    }, SELECTION_DEBOUNCE_MS);
+    // Reset all GLBs to invisible first (like LACSWORLD2)
+    glbNodes.forEach((node, key) => {
+      get().setGLBState(key, 'invisible');
+    });
     
-    set({ selectionTimer });
+    if (building && unit && (floor !== null)) {
+      // Set only the specific unit GLB to glowing
+      const unitGLB = get().getGLBByUnit(building, floor, unit);
+      
+      if (unitGLB) {
+        get().setGLBState(unitGLB.key, 'glowing');
+        
+        // Always animate camera - no blocking logic (like LACSWORLD2)
+        if (!skipCameraAnimation) {
+          get().centerCameraOnUnit(building, floor, unit);
+        }
+      } else {
+        console.warn('⚠️ Unit GLB not found for:', buildNodeKey(building, floor, unit));
+      }
+    }
+    
+    // Set state immediately (like LACSWORLD2)
+    set({ 
+      selectedBuilding: building,
+      selectedFloor: floor,
+      selectedUnit: unit
+    });
   },
 
   hoverUnit: (building: string | null, floor: string | null, unit: string | null) => {
@@ -388,7 +380,7 @@ export const useGLBState = create<GLBState>((set, get) => ({
 
   clearSelection: () => {
     const { glbNodes } = get();
-    
+
     // Reset all GLBs to invisible
     glbNodes.forEach((node, key) => {
       get().setGLBState(key, 'invisible');
@@ -399,7 +391,8 @@ export const useGLBState = create<GLBState>((set, get) => ({
       selectedFloor: null,
       selectedUnit: null,
       hoveredUnit: null,
-      hoveredFloor: null
+      hoveredFloor: null,
+      isCameraAnimating: false // Reset animation state to allow fresh selections
     });
   },
 
@@ -534,7 +527,7 @@ export const useGLBState = create<GLBState>((set, get) => ({
   },
 
   centerCameraOnUnit: (building: string, floor: string, unit: string) => {
-    const { cameraControlsRef, getGLBByUnit } = get();
+    const { cameraControlsRef, getGLBByUnit, isCameraAnimating } = get();
     
     logger.log('CAMERA', '📷', 'centerCameraOnUnit called:', { building, floor, unit });
     
@@ -543,10 +536,22 @@ export const useGLBState = create<GLBState>((set, get) => ({
       return;
     }
     
+    // ANIMATION PROTECTION: Cancel any existing animation to prevent conflicts
+    const controls = cameraControlsRef.current;
+    if (isCameraAnimating) {
+      try {
+        controls.stop?.(); // Stop current animation if method exists
+        logger.log('CAMERA', '⚡', 'Stopped existing camera animation');
+      } catch (error) {
+        logger.warn('CAMERA', '⚠️', 'Could not stop camera animation:', error);
+      }
+    }
+    
+    // Set animation state
+    set({ isCameraAnimating: true });
+    
     // MOBILE OPTIMIZATION: Use instant positioning instead of animation to prevent GPU pressure
     const isMobile = window.innerWidth < 768;
-
-    const controls = cameraControlsRef.current;
     
     const unitGLB = getGLBByUnit(building, floor, unit);
     
@@ -585,22 +590,22 @@ export const useGLBState = create<GLBState>((set, get) => ({
     // Unit-specific camera positioning override map
     const unitSpecificAngles: Record<string, { side: 'west' | 'north' | 'south' | 'east', heightMultiplier?: number }> = {
       // Fifth Street Building - West side units
-      'F-35': { side: 'west' },
+      'F-35': { side: 'west', heightMultiplier: 1.3 },
+      'F-170': { side: 'west' },
       'F-250': { side: 'west' },
       'F-290': { side: 'west' },
       'F-330': { side: 'west' },
       'F-350': { side: 'west' },
       
-      // Maryland Building - West side units
-      'M-20': { side: 'west' },
-      'M-150': { side: 'west' },
-      'M-170': { side: 'west' },
-      'M-180': { side: 'west', heightMultiplier: 1.15 }, // 15% height increase
-      'M-230': { side: 'west' },
-      'M-250': { side: 'west' },
-      'M-270': { side: 'west' },
-      'M-340': { side: 'west' },
-      'M-345': { side: 'west' },
+      // Maryland Building - custom west-side angles
+      'M-20': { side: 'west', heightMultiplier: 1.5 },
+      'M-150': { side: 'west', heightMultiplier: 1.45 },
+      'M-170': { side: 'west', heightMultiplier: 1.35 },
+      'M-230': { side: 'west', heightMultiplier: 1.45 },
+      'M-250': { side: 'west', heightMultiplier: 1.45 },
+      'M-270': { side: 'west', heightMultiplier: 1.35 },
+      'M-340': { side: 'west', heightMultiplier: 1.35 },
+      'M-345': { side: 'west', heightMultiplier: 1.35 },
       
       // Maryland Building - North side units
       'M-120': { side: 'north' },
@@ -612,7 +617,54 @@ export const useGLBState = create<GLBState>((set, get) => ({
       'T-400': { side: 'south' },
       'T-430': { side: 'south' },
       'T-450': { side: 'south' },
-      'T-530': { side: 'south' }
+      'T-530': { side: 'south' },
+      
+      // Fifth Street Building - East side units (all others not specified above)
+      'F-10': { side: 'east' },
+      'F-15': { side: 'east' },
+      'F-20': { side: 'east' },
+      'F-25': { side: 'east' },
+      'F-30': { side: 'east' },
+      'F-40': { side: 'east' },
+      'F-50': { side: 'east' },
+      'F-60': { side: 'west' },
+      'F-70': { side: 'east' },
+      'F-100': { side: 'east' },
+      'F-105': { side: 'east' },
+      'F-110': { side: 'east' },
+      'F-115': { side: 'east' },
+      'F-140': { side: 'east' },
+      'F-150': { side: 'east' },
+      'F-160': { side: 'east' },
+      'F-175': { side: 'east' },
+      'F-180': { side: 'east' },
+      'F-185': { side: 'east' },
+      'F-187': { side: 'east' },
+      'F-190': { side: 'east' },
+      'F-200': { side: 'east' },
+      'F-240': { side: 'east' },
+      'F-280': { side: 'east' },
+      'F-300': { side: 'east' },
+      'F-340': { side: 'east' },
+      'F-360': { side: 'east' },
+      'F-363': { side: 'east' },
+      'F-365': { side: 'east' },
+      'F-380': { side: 'east' },
+      
+      // Maryland Building - East side units (all others not specified above)
+      'M-40': { side: 'east' },
+      'M-45': { side: 'east' },
+      'M-50': { side: 'east' },
+      'M-145': { side: 'east' },
+      'M-160': { side: 'east' },
+      'M-180': { side: 'east', heightMultiplier: 1.15 },
+      'M-210': { side: 'east' },
+      'M-220': { side: 'east' },
+      'M-240': { side: 'east' },
+      'M-260': { side: 'east' },
+      'M-300': { side: 'east' },
+      'M-320': { side: 'east' },
+      'M-350': { side: 'east' }
     };
     
     // Check for unit-specific override and calculate camera position
@@ -627,7 +679,7 @@ export const useGLBState = create<GLBState>((set, get) => ({
       
       switch (unitOverride.side) {
         case 'west':
-          cameraX = unitPosition.x - horizontalDistance;
+          cameraX = unitPosition.x + horizontalDistance;
           cameraZ = unitPosition.z;
           break;
         case 'north':
@@ -640,18 +692,18 @@ export const useGLBState = create<GLBState>((set, get) => ({
           break;
         case 'east':
         default:
-          cameraX = unitPosition.x + horizontalDistance;
+          cameraX = unitPosition.x - horizontalDistance;
           cameraZ = unitPosition.z;
           break;
       }
     } else {
       // Building-specific camera positioning for straight-on views (fallback)
       if (building === "Fifth Street Building") {
-        // Front view from the west (rotated 180° from original east view)
+        // Front view from the east (default for F units not in override)
         cameraX = unitPosition.x - horizontalDistance;
         cameraZ = unitPosition.z;
       } else if (building === "Maryland Building") {
-        // Side view from the west (keep original)
+        // Side view from the east (default for M units not in override)
         cameraX = unitPosition.x - horizontalDistance;
         cameraZ = unitPosition.z;
       } else if (building === "Tower Building") {
@@ -686,12 +738,37 @@ export const useGLBState = create<GLBState>((set, get) => ({
         controls.update(0); // Force synchronous update
         set({ isCameraAnimating: false }); // Trigger state change to force re-render
       } else {
-        // DESKTOP: Smooth animation as before
-        controls.setLookAt(
+        // DESKTOP: Smooth animation with completion tracking
+        const animationPromise = controls.setLookAt(
           cameraPosition.x, cameraPosition.y, cameraPosition.z, // Camera position
           targetPosition.x, targetPosition.y, targetPosition.z, // Target position
           true // Enable smooth animation
         );
+        
+        // Clear animation state when completed
+        if (animationPromise && typeof animationPromise.then === 'function') {
+          animationPromise.then(() => {
+            set({ isCameraAnimating: false });
+            logger.log('CAMERA', '✅', 'Camera animation completed');
+          }).catch((error) => {
+            set({ isCameraAnimating: false });
+            logger.warn('CAMERA', '⚠️', 'Camera animation error:', error);
+          });
+        } else {
+          // Fallback for non-promise setLookAt
+          setTimeout(() => {
+            set({ isCameraAnimating: false });
+          }, 1000); // Assume 1 second max animation time
+        }
+        
+        // Additional fallback to ensure animation state ALWAYS resets
+        setTimeout(() => {
+          const currentState = get();
+          if (currentState.isCameraAnimating) {
+            console.warn('🔧 Force-resetting stuck camera animation state');
+            set({ isCameraAnimating: false });
+          }
+        }, 2000); // Force reset after 2 seconds maximum
       }
       
       logger.log('CAMERA', '📷', `Positioned camera for ${building}:`, {

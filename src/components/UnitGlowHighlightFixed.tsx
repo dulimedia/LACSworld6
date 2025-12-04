@@ -8,6 +8,7 @@ export const UnitGlowHighlightFixed = () => {
   const glowGroupRef = useRef<THREE.Group>(null);
   const currentGlowMeshesRef = useRef<THREE.Mesh[]>([]);
   const glowMaterialRef = useRef<THREE.Material | null>(null);
+  const isProcessingRef = useRef<boolean>(false);
 
   // Create the blue glow material once with proper depth settings
   useEffect(() => {
@@ -37,9 +38,10 @@ export const UnitGlowHighlightFixed = () => {
             return;
           }
 
-          // Clone the geometry to create glow mesh
+          // Clone the geometry and material to prevent sharing corruption
           const clonedGeometry = child.geometry.clone();
-          const glowMesh = new THREE.Mesh(clonedGeometry, glowMaterialRef.current!);
+          const clonedMaterial = glowMaterialRef.current!.clone();
+          const glowMesh = new THREE.Mesh(clonedGeometry, clonedMaterial);
           
           // Copy transform from original mesh
           glowMesh.position.copy(child.position);
@@ -67,22 +69,39 @@ export const UnitGlowHighlightFixed = () => {
     return glowMeshes;
   };
 
-  // Clear existing glow meshes
+  // Clear existing glow meshes with proper material disposal
   const clearGlowMeshes = () => {
-    if (glowGroupRef.current) {
+    if (glowGroupRef.current && !isProcessingRef.current) {
+      isProcessingRef.current = true; // Prevent re-entry during cleanup
+      
       currentGlowMeshesRef.current.forEach(mesh => {
         glowGroupRef.current?.remove(mesh);
+        // Dispose cloned geometry
         mesh.geometry?.dispose();
+        // Dispose cloned material to prevent corruption
+        if (mesh.material && Array.isArray(mesh.material)) {
+          mesh.material.forEach(mat => mat.dispose());
+        } else if (mesh.material) {
+          mesh.material.dispose();
+        }
       });
+      
+      currentGlowMeshesRef.current = [];
+      isProcessingRef.current = false;
     }
-    currentGlowMeshesRef.current = [];
   };
 
   // Update glow for selected unit ONLY
   useEffect(() => {
-    if (!glowGroupRef.current || !glowMaterialRef.current) return;
+    if (!glowGroupRef.current || !glowMaterialRef.current || isProcessingRef.current) return;
     
     console.log('[SELECTIVE GLOW] selectedUnit =', selectedUnit, 'selectedBuilding =', selectedBuilding, 'selectedFloor =', selectedFloor);
+    
+    // RACE CONDITION PROTECTION: Prevent overlapping glow operations
+    if (isProcessingRef.current) {
+      console.log('[SELECTIVE GLOW] ⚡ Skipping glow update - processing in progress');
+      return;
+    }
     
     // Clear any existing glow meshes first
     clearGlowMeshes();

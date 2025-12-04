@@ -5,28 +5,49 @@ export const useFlashPrevention = () => {
   const { selectedUnit, selectedBuilding, selectedFloor } = useGLBState();
   const [preventFlash, setPreventFlash] = useState(false);
   const lastSelectionRef = useRef<string>('');
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     // Create a selection signature
     const currentSelection = `${selectedBuilding || ''}-${selectedFloor || ''}-${selectedUnit || ''}`;
     
-    // If selection changed (and it's not just initial load)
-    if (currentSelection !== lastSelectionRef.current && lastSelectionRef.current !== '') {
+    if (!currentSelection) {
+      // No selection, just clear any pending freeze frame
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+      setPreventFlash(false);
+      lastSelectionRef.current = currentSelection;
+      return;
+    }
+
+    if (currentSelection !== lastSelectionRef.current) {
       console.log('🚨 SELECTION CHANGE DETECTED - Activating flash prevention');
       console.log('Previous:', lastSelectionRef.current);
       console.log('Current:', currentSelection);
-      
-      // Activate freeze-frame immediately
+
       setPreventFlash(true);
-      
-      // Deactivate after flash window
-      setTimeout(() => {
+
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+
+      timeoutRef.current = setTimeout(() => {
         setPreventFlash(false);
+        timeoutRef.current = null;
         console.log('✅ Flash prevention window ended');
-      }, 500); // 500ms should cover any flash duration
+      }, 500);
     }
-    
+
     lastSelectionRef.current = currentSelection;
+
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    };
   }, [selectedUnit, selectedBuilding, selectedFloor]);
 
   return {

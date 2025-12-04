@@ -99,7 +99,7 @@ const UnitRow: React.FC<UnitRowProps> = ({
   return (
     <div
       className={`
-        px-4 py-2 cursor-pointer transition-all duration-150 border-l-4
+        px-5 py-3 cursor-pointer transition-all duration-150 border-l-4 rounded-lg mb-2
         ${isSelected 
           ? 'bg-blue-50 border-blue-500 shadow-sm' 
           : isHovered 
@@ -118,17 +118,17 @@ const UnitRow: React.FC<UnitRowProps> = ({
       }}
     >
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-4">
           {isAvailable ? (
-            <Circle size={8} className="text-green-500 fill-current" />
+            <Circle size={10} className="text-green-500 fill-current" />
           ) : (
-            <Square size={8} className="text-red-500 fill-current" />
+            <Square size={10} className="text-red-500 fill-current" />
           )}
           <div>
-            <div className="text-sm font-medium text-gray-900">
+            <div className="text-base font-semibold text-gray-900">
               {unit.unit_name}
             </div>
-            <div className="text-xs text-gray-500">
+            <div className="text-sm text-gray-500">
               {unit.unit_key}
             </div>
           </div>
