@@ -9,8 +9,6 @@ export const createGlowMaterial = (color = 0x3b82f6) => {
     depthWrite: false,  // key: don't write to depth buffer
     blending: THREE.AdditiveBlending, // makes it feel like light
     side: THREE.FrontSide,
-    emissive: new THREE.Color(color), // makes it glow and respond to bloom
-    emissiveIntensity: 0.5, // boost emissive for stronger bloom effect
   });
 };
 

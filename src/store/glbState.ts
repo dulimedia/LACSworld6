@@ -36,6 +36,9 @@ export interface GLBState {
   isCameraAnimating: boolean;
   lastCameraTarget: string | null;
   
+  // Selection debounce management
+  selectionTimer: NodeJS.Timeout | null;
+  
   // Hover state
   hoveredUnit: string | null;
   hoveredFloor: { building: string; floor: string } | null;
@@ -118,6 +121,7 @@ export const useGLBState = create<GLBState>((set, get) => ({
   cameraControlsRef: null,
   isCameraAnimating: false,
   lastCameraTarget: null,
+  selectionTimer: null,
 
   // Actions
   initializeGLBNodes: () => {
@@ -285,35 +289,39 @@ export const useGLBState = create<GLBState>((set, get) => ({
     
     console.log('🔍 selectUnit called:', { building, floor, unit });
     
-    // Reset all GLBs to invisible first
-    glbNodes.forEach((node, key) => {
-      get().setGLBState(key, 'invisible');
-    });
-    
-    if (building && unit && (floor !== null)) {
-      // Set only the specific unit GLB to glowing
-      const unitGLB = get().getGLBByUnit(building, floor, unit);
+    // CRITICAL FIX: Prevent rapid double/triple clicks from breaking functionality
+    const SELECTION_DEBOUNCE_MS = 250; // Prevent rapid clicking
+    const selectionTimer = setTimeout(() => {
+      // Reset all GLBs to invisible first
+      glbNodes.forEach((node, key) => {
+        get().setGLBState(key, 'invisible');
+      });
       
-      
-      if (unitGLB) {
-        get().setGLBState(unitGLB.key, 'glowing');
+      if (building && unit && (floor !== null)) {
+        // Set only the specific unit GLB to glowing
+        const unitGLB = get().getGLBByUnit(building, floor, unit);
         
-        // Only animate camera on initial selection, not when restoring state
-        if (!skipCameraAnimation) {
-          get().centerCameraOnUnit(building, floor, unit);
+        if (unitGLB) {
+          get().setGLBState(unitGLB.key, 'glowing');
+          
+          // Only animate camera on initial selection, not when restoring state
+          if (!skipCameraAnimation) {
+            get().centerCameraOnUnit(building, floor, unit);
+          }
         } else {
+          console.warn('⚠️ Unit GLB not found for:', buildNodeKey(building, floor, unit));
         }
-      } else {
-        console.warn('⚠️ Unit GLB not found for:', buildNodeKey(building, floor, unit));
       }
-    } else {
-    }
+      
+      set({ 
+        selectedBuilding: building,
+        selectedFloor: floor,
+        selectedUnit: unit,
+        selectionTimer: null
+      });
+    }, SELECTION_DEBOUNCE_MS);
     
-    set({ 
-      selectedBuilding: building,
-      selectedFloor: floor,
-      selectedUnit: unit 
-    });
+    set({ selectionTimer });
   },
 
   hoverUnit: (building: string | null, floor: string | null, unit: string | null) => {
@@ -571,27 +579,90 @@ export const useGLBState = create<GLBState>((set, get) => ({
 
     // Calculate camera position for straight-on, less elevated view
     const baseHeight = unitPosition.y || 0; // Fallback to 0 if unitPosition.y is undefined
-    const eyeLevelHeight = baseHeight + (isMobile ? 2 : 3); // Lower on mobile for closer view
+    let eyeLevelHeight = baseHeight + (isMobile ? 2 : 3); // Lower on mobile for closer view
     const horizontalDistance = isMobile ? 8 : 12; // Much closer on mobile for simpler rendering
-    let cameraX, cameraZ;
     
-    // Building-specific camera positioning for straight-on views
-    if (building === "Fifth Street Building") {
-      // Front view from the west (rotated 180° from original east view)
-      cameraX = unitPosition.x - horizontalDistance;
-      cameraZ = unitPosition.z;
-    } else if (building === "Maryland Building") {
-      // Side view from the west (keep original)
-      cameraX = unitPosition.x - horizontalDistance;
-      cameraZ = unitPosition.z;
-    } else if (building === "Tower Building") {
-      // Front-facing view from the north (rotated 180° from original south view)
-      cameraX = unitPosition.x;
-      cameraZ = unitPosition.z - horizontalDistance;
+    // Unit-specific camera positioning override map
+    const unitSpecificAngles: Record<string, { side: 'west' | 'north' | 'south' | 'east', heightMultiplier?: number }> = {
+      // Fifth Street Building - West side units
+      'F-35': { side: 'west' },
+      'F-250': { side: 'west' },
+      'F-290': { side: 'west' },
+      'F-330': { side: 'west' },
+      'F-350': { side: 'west' },
+      
+      // Maryland Building - West side units
+      'M-20': { side: 'west' },
+      'M-150': { side: 'west' },
+      'M-170': { side: 'west' },
+      'M-180': { side: 'west', heightMultiplier: 1.15 }, // 15% height increase
+      'M-230': { side: 'west' },
+      'M-250': { side: 'west' },
+      'M-270': { side: 'west' },
+      'M-340': { side: 'west' },
+      'M-345': { side: 'west' },
+      
+      // Maryland Building - North side units
+      'M-120': { side: 'north' },
+      'M-130': { side: 'north' },
+      'M-140': { side: 'north' },
+      
+      // Tower Building - South side units
+      'T-220': { side: 'south' },
+      'T-400': { side: 'south' },
+      'T-430': { side: 'south' },
+      'T-450': { side: 'south' },
+      'T-530': { side: 'south' }
+    };
+    
+    // Check for unit-specific override and calculate camera position
+    const unitOverride = unitSpecificAngles[unit];
+    let cameraX: number;
+    let cameraZ: number;
+    
+    if (unitOverride) {
+      // Use unit-specific positioning
+      const heightAdjustment = unitOverride.heightMultiplier || 1.0;
+      eyeLevelHeight = baseHeight + (isMobile ? 2 : 3) * heightAdjustment;
+      
+      switch (unitOverride.side) {
+        case 'west':
+          cameraX = unitPosition.x - horizontalDistance;
+          cameraZ = unitPosition.z;
+          break;
+        case 'north':
+          cameraX = unitPosition.x;
+          cameraZ = unitPosition.z - horizontalDistance;
+          break;
+        case 'south':
+          cameraX = unitPosition.x;
+          cameraZ = unitPosition.z + horizontalDistance;
+          break;
+        case 'east':
+        default:
+          cameraX = unitPosition.x + horizontalDistance;
+          cameraZ = unitPosition.z;
+          break;
+      }
     } else {
-      // Default positioning for other buildings
-      cameraX = unitPosition.x + horizontalDistance * 0.7;
-      cameraZ = unitPosition.z + horizontalDistance * 0.7;
+      // Building-specific camera positioning for straight-on views (fallback)
+      if (building === "Fifth Street Building") {
+        // Front view from the west (rotated 180° from original east view)
+        cameraX = unitPosition.x - horizontalDistance;
+        cameraZ = unitPosition.z;
+      } else if (building === "Maryland Building") {
+        // Side view from the west (keep original)
+        cameraX = unitPosition.x - horizontalDistance;
+        cameraZ = unitPosition.z;
+      } else if (building === "Tower Building") {
+        // Front-facing view from the north (rotated 180° from original south view)
+        cameraX = unitPosition.x;
+        cameraZ = unitPosition.z - horizontalDistance;
+      } else {
+        // Default positioning for other buildings
+        cameraX = unitPosition.x + horizontalDistance * 0.7;
+        cameraZ = unitPosition.z + horizontalDistance * 0.7;
+      }
     }
     
     const cameraPosition = new THREE.Vector3(cameraX, eyeLevelHeight, cameraZ);
@@ -608,7 +679,7 @@ export const useGLBState = create<GLBState>((set, get) => ({
         controls.setLookAt(
           cameraPosition.x, cameraPosition.y, cameraPosition.z, // Camera position
           targetPosition.x, targetPosition.y, targetPosition.z, // Target position
-          false // No animation - instant positioning
+          true // Enable smooth animation
         );
         
         // Force immediate update and render to fix timing glitch

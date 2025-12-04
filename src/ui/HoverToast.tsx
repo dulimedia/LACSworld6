@@ -1,6 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useExploreState } from '../store/exploreState';
 
+// Helper to detect mobile devices
+const isMobile = () => {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+         window.innerWidth <= 768;
+};
+
 interface HoverToastProps {
   className?: string;
 }
@@ -39,7 +45,8 @@ export const HoverToast: React.FC<HoverToastProps> = ({ className = '' }) => {
     };
   }, [hoveredUnitKey, hoveredUnit]);
 
-  if (!visible || !hoveredUnit) {
+  // Don't show on mobile devices
+  if (!visible || !hoveredUnit || isMobile()) {
     return null;
   }
 

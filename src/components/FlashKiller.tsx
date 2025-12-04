@@ -1,0 +1,93 @@
+import { useEffect, useRef, useState } from 'react';
+
+interface FlashKillerProps {
+  isActive: boolean; // When true, shows freeze-frame to prevent flash
+  duration?: number; // How long to show freeze-frame (ms)
+}
+
+export const FlashKiller: React.FC<FlashKillerProps> = ({ 
+  isActive, 
+  duration = 400 
+}) => {
+  const [freezeFrameUrl, setFreezeFrameUrl] = useState<string | null>(null);
+  const [showFreeze, setShowFreeze] = useState(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Capture canvas as freeze-frame when activated
+  useEffect(() => {
+    if (isActive) {
+      try {
+        // Find the R3F canvas element in DOM
+        const canvasElement = document.querySelector('canvas') as HTMLCanvasElement;
+        
+        if (canvasElement) {
+          // Capture current frame immediately
+          const dataUrl = canvasElement.toDataURL('image/jpeg', 0.8);
+          setFreezeFrameUrl(dataUrl);
+          setShowFreeze(true);
+          
+          console.log('🧊 FREEZE-FRAME: Captured canvas to prevent flash');
+          
+          // Hide freeze-frame after duration
+          timeoutRef.current = setTimeout(() => {
+            setShowFreeze(false);
+            console.log('✅ Flash prevention window ended');
+            // Clean up URL after animation
+            setTimeout(() => setFreezeFrameUrl(null), 100);
+          }, duration);
+        } else {
+          console.warn('❌ No canvas found for freeze-frame capture');
+        }
+        
+      } catch (error) {
+        console.error('❌ Failed to capture freeze-frame:', error);
+      }
+    }
+    
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [isActive, duration]);
+
+  // Don't render if no freeze-frame
+  if (!showFreeze || !freezeFrameUrl) return null;
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        zIndex: 9998, // Just below loading overlay (9999)
+        pointerEvents: 'none',
+        backgroundImage: `url(${freezeFrameUrl})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        transition: 'opacity 0.1s ease-out',
+      }}
+    >
+      {/* Optional subtle fade indicator */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 10,
+          right: 10,
+          background: 'rgba(0,0,0,0.7)',
+          color: 'white',
+          padding: '4px 8px',
+          borderRadius: '4px',
+          fontSize: '12px',
+          fontFamily: 'monospace',
+          opacity: 0.8,
+        }}
+      >
+        🧊 FREEZE
+      </div>
+    </div>
+  );
+};

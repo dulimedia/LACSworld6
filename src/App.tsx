@@ -19,6 +19,8 @@ import { FrustumCuller } from './components/FrustumCuller';
 import { UnitDetailsPopup } from './components/UnitDetailsPopup';
 import { SelectedUnitOverlay } from './components/SelectedUnitOverlay';
 import { UnitGlowHighlight } from './components/UnitGlowHighlight';
+import { UnitGlowHighlightFixed } from './components/UnitGlowHighlightFixed';
+import { TransitionMask } from './components/TransitionMask';
 import { CanvasClickHandler } from './components/CanvasClickHandler';
 import { CanvasResizeHandler } from './components/CanvasResizeHandler';
 import UnitRequestForm from './components/UnitRequestForm';
@@ -45,6 +47,8 @@ const PathTracer = lazy(() => import('./components/pathtracer/PathTracer').then(
 import { useFaceDebugHotkey } from './hooks/useFaceDebugHotkey';
 import { useUnitStore } from './stores/useUnitStore';
 import { useSidebarState } from './ui/Sidebar/useSidebarState';
+import { useFlashPrevention } from './hooks/useFlashPrevention';
+import { FlashKiller } from './components/FlashKiller';
 import { useExploreState, buildUnitsIndex, isUnitExcluded, type UnitRecord } from './store/exploreState';
 import { useGLBState } from './store/glbState';
 import { useCsvUnitData } from './hooks/useCsvUnitData';
@@ -409,6 +413,9 @@ function App() {
   const { setCameraControlsRef } = useGLBState();
   const { floorPlanExpanded, setFloorPlanExpanded } = useSidebarState();
   
+  // Flash prevention system - triggers freeze-frame on unit selection
+  const { preventFlash } = useFlashPrevention();
+  
   // Global hover preview state
   const [globalHoverPreview, setGlobalHoverPreview] = useState<{
     unitName: string;
@@ -439,6 +446,22 @@ function App() {
   
   const [showFullDetails, setShowFullDetails] = useState(false);
   const [modelsLoading, setModelsLoading] = useState(true);
+  
+  // AGGRESSIVE FLASH DETECTION - Monitor setModelsLoading calls
+  const originalSetModelsLoading = useRef(setModelsLoading);
+  const aggressiveFlashDetection = (loading: boolean) => {
+    const stack = new Error().stack;
+    console.log('🚨🚨🚨 FLASH TRIGGER DETECTED 🚨🚨🚨');
+    console.log('modelsLoading changed to:', loading);
+    console.log('Call stack:', stack);
+    console.log('==========================================');
+    originalSetModelsLoading.current(loading);
+  };
+  
+  // Replace setModelsLoading with detection version
+  useEffect(() => {
+    originalSetModelsLoading.current = setModelsLoading;
+  }, [setModelsLoading]);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingPhase, setLoadingPhase] = useState('initializing'); // Track loading phase
   const [effectsReady, setEffectsReady] = useState(false); // Delay post-processing effects
@@ -1353,8 +1376,9 @@ function App() {
               {/* Frustum Culling for performance - only render visible objects */}
               <FrustumCuller />
 
-              {/* Unit Glow Highlight - material-based, no mesh creation/destruction */}
-              <UnitGlowHighlight />
+              {/* Unit Glow Highlight - FIXED: Only glows selected unit, no mass mesh creation */}
+              <UnitGlowHighlightFixed />
+              {/* OLD BROKEN VERSION: <UnitGlowHighlight /> */}
 
               {/* Canvas Click Handler for clearing selection */}
               <CanvasClickHandler />
@@ -1409,6 +1433,14 @@ function App() {
             </>
           )}
         </RootCanvas>
+        
+        {/* Flash Prevention System - OUTSIDE Canvas but overlays entire screen */}
+        {/* TEMPORARILY DISABLED: FlashKiller was showing black screen freeze-frame */}
+        {/* <FlashKiller isActive={preventFlash} duration={400} /> */}
+        
+        {/* Transition Mask - Subtle dark overlay during unit selection changes */}
+        <TransitionMask />
+        
         </MobileErrorBoundary>
         )}
 
