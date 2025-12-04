@@ -3,9 +3,9 @@ import react from '@vitejs/plugin-react'
 
 // Use VITE_BASE_PATH env var for base path
 // Vercel: base = '/' (root)
-// GitHub Pages: base = '/LACS-WORLD-3/' (repository name)
+// GitHub Pages: base = '/LACSWORLD4/' (repository name)
 const base = process.env.VITE_BASE_PATH || 
-             (process.env.VERCEL ? '/' : '/LACS-WORLD-3/')
+             (process.env.VERCEL ? '/' : '/LACSWORLD4/')
 
 export default defineConfig({
   plugins: [react()],
