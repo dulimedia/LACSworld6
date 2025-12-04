@@ -72,9 +72,12 @@ export default function Sidebar() {
           {view === 'details' ? (
             <button
               onClick={handleBackToExplore}
-              className="flex items-center space-x-2 text-sm text-gray-600 hover:text-gray-900 transition"
+              className={cn(
+                "flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition",
+                isMobile ? "px-2 py-2 text-base min-h-[44px]" : "text-sm"
+              )}
             >
-              <ChevronLeft size={16} />
+              <ChevronLeft size={isMobile ? 20 : 16} />
               <span>Back to Explore</span>
             </button>
           ) : (
@@ -84,7 +87,8 @@ export default function Sidebar() {
             )}>
               <button
                 className={cn(
-                  'flex-1 px-3 py-1.5 rounded-lg text-sm font-medium transition',
+                  'flex-1 rounded-lg font-medium transition',
+                  isMobile ? 'px-4 py-3 text-base min-h-[48px]' : 'px-3 py-1.5 text-sm',
                   tab === 'explore' ? 'bg-white shadow' : 'opacity-70 hover:opacity-100'
                 )}
                 onClick={() => {
@@ -96,7 +100,8 @@ export default function Sidebar() {
               </button>
               <button
                 className={cn(
-                  'flex-1 px-3 py-1.5 rounded-lg text-sm font-medium transition',
+                  'flex-1 rounded-lg font-medium transition',
+                  isMobile ? 'px-4 py-3 text-base min-h-[48px]' : 'px-3 py-1.5 text-sm',
                   tab === 'request' ? 'bg-white shadow' : 'opacity-70 hover:opacity-100'
                 )}
                 onClick={() => {

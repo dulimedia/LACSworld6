@@ -13,6 +13,16 @@ import {
 import { isTowerUnit, getTowerUnitIndividualFloorplan, getTowerUnitFloorFloorplan, getFloorplanUrl as getIntelligentFloorplanUrl } from '../../services/floorplanMappingService';
 import { getFloorplanUrl as encodeFloorplanUrl } from '../../services/floorplanService';
 
+// EmailJS type declaration
+declare global {
+  interface Window {
+    emailjs?: {
+      init: (publicKey: string) => void;
+      send: (serviceId: string, templateId: string, templateParams: any) => Promise<any>;
+    };
+  }
+}
+
 export function SuiteDetailsTab() {
   const { selectedUnitKey, unitsData } = useExploreState();
   const { openFloorplan } = useFloorplan();
@@ -210,9 +220,38 @@ export function SuiteDetailsTab() {
         {displayUnit.recipients && displayUnit.recipients.length > 0 && (
           <div className="pt-2">
             <button
-              onClick={() => {
-                const mailto = `mailto:${displayUnit.recipients.join(',')}?subject=Inquiry about ${displayUnit.unit_name}`;
-                window.location.href = mailto;
+              onClick={async () => {
+                const recipientEmail = 'lacenterstudios3d@gmail.com';
+                
+                try {
+                  // Load EmailJS if not already loaded
+                  if (!window.emailjs) {
+                    const script = document.createElement('script');
+                    script.src = 'https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js';
+                    document.head.appendChild(script);
+                    await new Promise((resolve, reject) => {
+                      script.onload = resolve;
+                      script.onerror = reject;
+                      setTimeout(reject, 10000);
+                    });
+                    window.emailjs.init('7v5wJOSuv1p_PkcU5');
+                  }
+
+                  const templateParams = {
+                    from_name: 'Website Visitor',
+                    from_email: 'visitor@website.com',
+                    phone: 'Not provided',
+                    message: `I'm interested in leasing ${displayUnit.unit_name}. Please contact me with more information.`,
+                    selected_units: displayUnit.unit_name,
+                    to_email: recipientEmail,
+                    reply_to: 'visitor@website.com'
+                  };
+
+                  await window.emailjs.send('service_q47lbr7', 'template_0zeil8m', templateParams);
+                  alert('🎉 Your inquiry has been sent to LA Center Studios! We will contact you soon.');
+                } catch (error) {
+                  alert(`Unable to send inquiry. Please contact us directly at lacenterstudios3d@gmail.com`);
+                }
               }}
               className="w-full px-4 py-3 bg-black text-white rounded-lg hover:bg-gray-800 transition text-sm font-medium"
             >

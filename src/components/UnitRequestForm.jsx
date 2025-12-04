@@ -220,36 +220,46 @@ Sent from LA Center Unit Request System
       `.trim()
     };
 
-    // EmailJS Integration - Send actual emails
+    // EmailJS Integration - Send actual emails directly
     try {
-      console.log('📧 Sending email via EmailJS to:', recipientEmail);
+      console.log('📧 Starting direct email send to:', recipientEmail);
+      console.log('🔧 Form data:', { senderName, senderEmail, senderPhone, selectedUnits: selectedUnitsList.length });
+      
+      // Ensure all required fields are filled
+      if (!senderName || !senderEmail) {
+        throw new Error('Please fill in all required fields (Name and Email)');
+      }
       
       // Load EmailJS if not already loaded
       if (!window.emailjs) {
+        console.log('📦 Loading EmailJS library...');
         const script = document.createElement('script');
         script.src = 'https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js';
         document.head.appendChild(script);
-        await new Promise(resolve => script.onload = resolve);
+        await new Promise((resolve, reject) => {
+          script.onload = resolve;
+          script.onerror = reject;
+          setTimeout(reject, 10000); // 10 second timeout
+        });
+        console.log('✅ EmailJS library loaded');
         
-        // Initialize EmailJS
-        window.emailjs.init('7v5wJOSuv1p_PkcU5'); // Your public key
+        // Initialize EmailJS with your public key
+        window.emailjs.init('7v5wJOSuv1p_PkcU5');
+        console.log('✅ EmailJS initialized');
       }
 
       // Prepare template parameters
       const templateParams = {
         from_name: senderName,
         from_email: senderEmail,
-        phone: senderPhone,
-        message: message,
+        phone: senderPhone || 'Not provided',
+        message: message || 'No additional message',
         selected_units: selectedUnitsList.map(unit => `• ${unit}`).join('\n'),
         to_email: recipientEmail,
-        reply_to: senderEmail // Add reply-to field
+        reply_to: senderEmail
       };
       
-      console.log('🔍 Recipient email check:', recipientEmail);
-      console.log('🔍 Is recipient email empty?', !recipientEmail || recipientEmail.trim() === '');
-
-      console.log('📧 Template params:', templateParams);
+      console.log('📧 Sending email with template params:', templateParams);
 
       // Send email using EmailJS
       const response = await window.emailjs.send(
@@ -258,12 +268,14 @@ Sent from LA Center Unit Request System
         templateParams
       );
 
-      console.log('✅ Email sent successfully:', response);
+      console.log('✅ Email sent successfully via EmailJS:', response);
       
       setIsSending(false);
-      alert('Request has been successfully sent.');
       
-      // Reset form
+      // Success feedback
+      alert('🎉 Your request has been sent directly to LA Center Studios! We will contact you soon.');
+      
+      // Reset form and close
       setSelectedUnits(new Set());
       setMessage('');
       setSenderName('');
@@ -272,10 +284,17 @@ Sent from LA Center Unit Request System
       onClose();
       
     } catch (error) {
-      console.error('❌ Email sending failed:', error);
-      console.error('❌ Full error object:', JSON.stringify(error, null, 2));
+      console.error('❌ Direct email sending failed:', error);
       setIsSending(false);
-      alert(`Failed to send request: ${error.text || error.message || 'Unknown error'}. Please try again.`);
+      
+      // More user-friendly error handling
+      if (error.message && error.message.includes('fill in all required fields')) {
+        alert(error.message);
+      } else if (error.text === 'The user ID is invalid') {
+        alert('Email service configuration error. Please try again or contact us directly at lacenterstudios3d@gmail.com');
+      } else {
+        alert(`Unable to send email directly. Please try again or contact us at lacenterstudios3d@gmail.com\n\nError: ${error.text || error.message || 'Unknown error'}`);
+      }
     }
   };
 
@@ -454,7 +473,7 @@ Sent from LA Center Unit Request System
                 className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 <Send className="w-4 h-4" />
-                {isSending ? 'Sending...' : 'Send Request'}
+{isSending ? 'Sending Email...' : 'Send Request Email'}
               </button>
             </div>
           </form>

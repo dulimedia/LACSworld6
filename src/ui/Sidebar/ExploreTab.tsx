@@ -517,7 +517,7 @@ export function ExploreTab() {
               <button
                 key={option.value}
                 onClick={() => setSizeFilter(option.value)}
-                className={`text-xs px-3 py-2 rounded-lg transition-colors ${
+                className={`rounded-lg transition-colors ${isMobile ? 'text-sm px-4 py-3 min-h-[44px]' : 'text-xs px-3 py-2'} ${
                   isActive
                     ? 'bg-blue-500 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -542,7 +542,7 @@ export function ExploreTab() {
               <button
                 key={option.value}
                 onClick={() => setStatusFilter(option.value)}
-                className={`text-xs px-3 py-2 rounded-lg transition-colors ${
+                className={`rounded-lg transition-colors ${isMobile ? 'text-sm px-4 py-3 min-h-[44px]' : 'text-xs px-3 py-2'} ${
                   isActive
                     ? 'bg-blue-500 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -567,7 +567,7 @@ export function ExploreTab() {
               <button
                 key={option.value}
                 onClick={() => setOfficesFilter(option.value)}
-                className={`text-xs px-3 py-2 rounded-lg transition-colors ${
+                className={`rounded-lg transition-colors ${isMobile ? 'text-sm px-4 py-3 min-h-[44px]' : 'text-xs px-3 py-2'} ${
                   isActive
                     ? 'bg-blue-500 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -590,14 +590,14 @@ export function ExploreTab() {
         {groupedByBuilding.map(b => (
           <div key={b.name} className={isMobile ? "border border-black/5 rounded bg-white" : "border border-black/10 rounded-lg bg-white shadow-sm overflow-hidden"}>
             <button
-              className={isMobile ? "w-full text-left px-2 py-1 hover:bg-black/5 transition flex items-center justify-between text-xs" : "w-full text-left px-3 py-2 hover:bg-black/5 transition flex items-center justify-between"}
+              className={isMobile ? "w-full text-left px-4 py-3 hover:bg-black/5 transition flex items-center justify-between text-sm min-h-[48px]" : "w-full text-left px-3 py-2 hover:bg-black/5 transition flex items-center justify-between"}
               onClick={() => toggleBuilding(b.name)}
             >
-              <div className="flex items-center space-x-1">
-                {expandedBuildings.has(b.name) ? <ChevronDown size={isMobile ? 12 : 16} /> : <ChevronRight size={isMobile ? 12 : 16} />}
-                <span className={isMobile ? "font-medium text-xs" : "font-medium text-sm"}>{b.name}</span>
+              <div className="flex items-center space-x-2">
+                {expandedBuildings.has(b.name) ? <ChevronDown size={isMobile ? 20 : 16} /> : <ChevronRight size={isMobile ? 20 : 16} />}
+                <span className={isMobile ? "font-medium text-sm" : "font-medium text-sm"}>{b.name}</span>
               </div>
-              <span className={isMobile ? "text-[10px] bg-black/5 rounded px-1 py-0.5" : "text-xs bg-black/5 rounded-md px-2 py-0.5"}>{b.suiteCount} Suites</span>
+              <span className={isMobile ? "text-sm bg-black/5 rounded px-2 py-1" : "text-xs bg-black/5 rounded-md px-2 py-0.5"}>{b.suiteCount} Suites</span>
             </button>
 
             {expandedBuildings.has(b.name) && (
@@ -610,12 +610,12 @@ export function ExploreTab() {
                   // For Tower Building, render units directly without floor grouping
                   if (isTowerBuilding) {
                     return (
-                      <div key={floor.floorName} className={isMobile ? "px-1 pb-0.5 space-y-0.5" : "px-2 pb-1 space-y-1"}>
+                      <div key={floor.floorName} className={isMobile ? "px-2 pb-2 space-y-2" : "px-2 pb-1 space-y-1"}>
                         {floor.units.map(({unitKey, unit}) => (
                           <button
                             key={unitKey}
                             className={isMobile 
-                              ? "text-left px-1 py-0.5 rounded hover:bg-black/5 transition text-[10px] flex flex-col"
+                              ? "w-full text-left px-3 py-3 rounded hover:bg-black/5 transition text-sm flex items-center justify-between min-h-[44px] bg-white border border-black/5"
                               : "w-full text-left px-2 py-1.5 rounded hover:bg-black/5 transition text-sm flex items-center justify-between"}
                             onClick={() => {
                               setSelected(unitKey);
@@ -630,12 +630,12 @@ export function ExploreTab() {
                             onMouseEnter={() => setHovered(unitKey)}
                             onMouseLeave={() => setHovered(null)}
                           >
-                            <span className={isMobile ? "font-medium truncate" : ""}>{unit.unit_name}</span>
-                            {!isMobile && (
-                              <span className={`text-xs px-2 py-0.5 rounded ${unit.status ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                {unit.status ? 'Available' : 'Occupied'}
-                              </span>
-                            )}
+                            <span className={isMobile ? "font-medium text-sm" : ""}>{unit.unit_name}</span>
+                            <span className={isMobile 
+                              ? `text-xs px-2 py-1 rounded ${unit.status ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`
+                              : `text-xs px-2 py-0.5 rounded ${unit.status ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                              {unit.status ? 'Available' : 'Occupied'}
+                            </span>
                           </button>
                         ))}
                       </div>
@@ -647,22 +647,22 @@ export function ExploreTab() {
                     <div key={floor.floorName} className="border border-black/5 rounded bg-white">
                       <button
                         onClick={() => toggleFloor(floorKey)}
-                        className={isMobile ? "w-full text-left px-1.5 py-1 hover:bg-black/5 transition flex items-center justify-between" : "w-full text-left px-2 py-1.5 hover:bg-black/5 transition flex items-center justify-between"}
+                        className={isMobile ? "w-full text-left px-3 py-2 hover:bg-black/5 transition flex items-center justify-between min-h-[40px]" : "w-full text-left px-2 py-1.5 hover:bg-black/5 transition flex items-center justify-between"}
                       >
-                        <div className="flex items-center space-x-1">
-                          {isFloorExpanded ? <ChevronDown size={isMobile ? 10 : 14} /> : <ChevronRight size={isMobile ? 10 : 14} />}
-                          <span className={isMobile ? "text-[10px] font-semibold text-black/70" : "text-xs font-semibold text-black/70"}>{floor.floorName}</span>
+                        <div className="flex items-center space-x-2">
+                          {isFloorExpanded ? <ChevronDown size={isMobile ? 16 : 14} /> : <ChevronRight size={isMobile ? 16 : 14} />}
+                          <span className={isMobile ? "text-xs font-semibold text-black/70" : "text-xs font-semibold text-black/70"}>{floor.floorName}</span>
                         </div>
-                        <span className={isMobile ? "text-[9px] text-black/40" : "text-xs text-black/40"}>({floor.units.length})</span>
+                        <span className={isMobile ? "text-xs text-black/40" : "text-xs text-black/40"}>({floor.units.length})</span>
                       </button>
                       
                       {isFloorExpanded && (
-                        <div className={isMobile ? "px-1 pb-0.5 space-y-0.5" : "px-2 pb-1 space-y-1"}>
+                        <div className={isMobile ? "px-2 pb-2 space-y-2" : "px-2 pb-1 space-y-1"}>
                           {floor.units.map(({unitKey, unit}) => (
                             <button
                               key={unitKey}
                               className={isMobile 
-                                ? "text-left px-1 py-0.5 rounded hover:bg-black/5 transition text-[10px] flex flex-col"
+                                ? "w-full text-left px-3 py-3 rounded hover:bg-black/5 transition text-sm flex items-center justify-between min-h-[44px] bg-white border border-black/5"
                                 : "w-full text-left px-2 py-1.5 rounded hover:bg-black/5 transition text-sm flex items-center justify-between"}
                               onClick={() => {
                                 setSelected(unitKey);
@@ -676,12 +676,12 @@ export function ExploreTab() {
                               onMouseEnter={() => setHovered(unitKey)}
                               onMouseLeave={() => setHovered(null)}
                             >
-                              <span className={isMobile ? "font-medium truncate" : ""}>{unit.unit_name}</span>
-                              {!isMobile && (
-                                <span className={`text-xs px-2 py-0.5 rounded ${unit.status ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                  {unit.status ? 'Available' : 'Occupied'}
-                                </span>
-                              )}
+                              <span className={isMobile ? "font-medium text-sm" : ""}>{unit.unit_name}</span>
+                              <span className={isMobile 
+                                ? `text-xs px-2 py-1 rounded ${unit.status ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`
+                                : `text-xs px-2 py-0.5 rounded ${unit.status ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                {unit.status ? 'Available' : 'Occupied'}
+                              </span>
                             </button>
                           ))}
                         </div>

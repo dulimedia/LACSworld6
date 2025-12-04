@@ -2,6 +2,16 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useExploreState } from '../../store/exploreState';
 import { ChevronDown, ChevronRight, Building } from 'lucide-react';
 
+// EmailJS type declaration
+declare global {
+  interface Window {
+    emailjs?: {
+      init: (publicKey: string) => void;
+      send: (serviceId: string, templateId: string, templateParams: any) => Promise<any>;
+    };
+  }
+}
+
 export function RequestTab() {
   const { unitsData, unitsByBuilding } = useExploreState();
   const [selectedSuites, setSelectedSuites] = useState<Set<string>>(new Set());
@@ -91,34 +101,117 @@ export function RequestTab() {
       return unit?.unit_name || key;
     });
 
-    const recipients = Array.from(selectedSuites).flatMap(key => {
-      const unit = unitsData.get(key);
-      return unit?.recipients || [];
+    // ALWAYS send to lacenterstudios3d@gmail.com as requested
+    const recipientEmail = 'lacenterstudios3d@gmail.com';
+
+    console.log('📧 Starting direct email send to:', recipientEmail);
+    console.log('🔧 Form data:', { 
+      name: formData.name, 
+      email: formData.email, 
+      selectedUnits: selectedUnits.length 
     });
 
-    const uniqueRecipients = Array.from(new Set(recipients));
+    // Validate required fields
+    if (!formData.name || !formData.email) {
+      alert('Please fill in all required fields (Name and Email)');
+      return;
+    }
 
-    const emailBody = `
-New Suite Request from LACSWORLD
+    if (selectedUnits.length === 0) {
+      alert('Please select at least one suite');
+      return;
+    }
 
-Contact Information:
-Name: ${formData.name}
-Email: ${formData.email}
-Phone: ${formData.phone}
+    try {
+      console.log('🔄 Starting EmailJS send process...');
+      
+      // Load EmailJS if not already loaded
+      if (!window.emailjs) {
+        console.log('📦 Loading EmailJS library...');
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js';
+        document.head.appendChild(script);
+        await new Promise((resolve, reject) => {
+          script.onload = () => {
+            console.log('✅ EmailJS script loaded successfully');
+            resolve();
+          };
+          script.onerror = (error) => {
+            console.error('❌ Failed to load EmailJS script:', error);
+            reject(error);
+          };
+          setTimeout(() => {
+            console.error('⏰ EmailJS script load timeout');
+            reject(new Error('Script load timeout'));
+          }, 10000);
+        });
 
-Selected Suites:
-${selectedUnits.join('\n')}
+        // Initialize EmailJS with your public key
+        console.log('🔧 Initializing EmailJS with public key...');
+        window.emailjs.init('7v5wJOSuv1p_PkcU5');
+        console.log('✅ EmailJS initialized with key: 7v5wJOSuv1p_PkcU5');
+      } else {
+        console.log('✅ EmailJS already loaded and available');
+      }
 
-Message:
-${formData.message}
-    `.trim();
+      // Prepare template parameters
+      const templateParams = {
+        from_name: formData.name,
+        from_email: formData.email,
+        phone: formData.phone || 'Not provided',
+        message: formData.message || 'No additional message',
+        selected_units: selectedUnits.map(unit => `• ${unit}`).join('\n'),
+        to_email: recipientEmail,
+        reply_to: formData.email
+      };
 
-    const mailto = `mailto:${uniqueRecipients.join(',')}?subject=Suite Request from ${formData.name}&body=${encodeURIComponent(emailBody)}`;
-    
-    window.location.href = mailto;
+      console.log('📧 Attempting to send email with:');
+      console.log('  Service ID: service_q47lbr7');
+      console.log('  Template ID: template_0zeil8m');
+      console.log('  Recipient:', recipientEmail);
+      console.log('  Template params:', templateParams);
 
-    setFormData({ name: '', email: '', phone: '', message: '' });
-    setSelectedSuites(new Set());
+      // Send email using EmailJS
+      console.log('📤 Calling EmailJS send...');
+      const response = await window.emailjs.send(
+        'service_q47lbr7', // Your service ID
+        'template_0zeil8m', // Your template ID
+        templateParams
+      );
+
+      console.log('✅ Email sent successfully via EmailJS!');
+      console.log('📊 Response details:', response);
+
+      // Success feedback
+      alert('🎉 Your request has been sent directly to LA Center Studios! We will contact you soon.');
+
+      // Reset form
+      setFormData({ name: '', email: '', phone: '', message: '' });
+      setSelectedSuites(new Set());
+
+    } catch (error) {
+      console.error('❌ Direct email sending failed:');
+      console.error('Error object:', error);
+      console.error('Error type:', typeof error);
+      console.error('Error keys:', Object.keys(error));
+      if (error.text) console.error('Error text:', error.text);
+      if (error.status) console.error('Error status:', error.status);
+      if (error.message) console.error('Error message:', error.message);
+
+      // More user-friendly error handling
+      if (error.message && error.message.includes('fill in all required fields')) {
+        alert(error.message);
+      } else if (error.text === 'The user ID is invalid') {
+        alert('EmailJS configuration error: Invalid user ID. Please contact us directly at lacenterstudios3d@gmail.com');
+      } else if (error.status === 400) {
+        alert('EmailJS error: Bad request. Please contact us directly at lacenterstudios3d@gmail.com');
+      } else if (error.status === 401) {
+        alert('EmailJS error: Unauthorized. Please contact us directly at lacenterstudios3d@gmail.com');
+      } else {
+        const errorMsg = error.text || error.message || 'Unknown error';
+        alert(`Unable to send email directly. Please contact us at lacenterstudios3d@gmail.com\n\nTechnical error: ${errorMsg}`);
+      }
+    }
   };
 
   return (
