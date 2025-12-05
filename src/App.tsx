@@ -71,27 +71,27 @@ const SceneCapture = ({ sceneRef, glRef }: { sceneRef: React.RefObject<THREE.Sce
   const { gl, scene } = useThree();
   const setupComplete = useRef(false);
   useFaceDebugHotkey();
-  
+
   useEffect(() => {
     sceneRef.current = scene;
     glRef.current = gl;
-    
+
     // Setup renderer safety once
     if (!setupComplete.current) {
       setupRendererSafety(gl);
       setupComplete.current = true;
     }
   }, [scene, gl, sceneRef, glRef]);
-  
+
   // Run material validation after scene loads
   useEffect(() => {
     const timer = setTimeout(() => {
       validateAllMaterials(scene);
     }, 2000); // After models load
-    
+
     return () => clearTimeout(timer);
   }, [scene]);
-  
+
   return null;
 };
 
@@ -125,8 +125,8 @@ const LegacyHDRIEnvironment = React.memo(() => {
 });
 
 // Simple Error Boundary for HDRI loading
-class HDRIErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean}> {
-  constructor(props: {children: React.ReactNode}) {
+class HDRIErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: React.ReactNode }) {
     super(props);
     this.state = { hasError: false };
   }
@@ -291,7 +291,7 @@ const CameraController: React.FC<{
 }> = ({ controlsRef }) => {
   const { camera, size } = useThree();
   const isMobile = typeof window !== 'undefined' && matchMedia('(max-width:768px)').matches;
-  
+
   useEffect(() => {
     camera.position.set(isMobile ? 9 : -10, isMobile ? 7 : 10, isMobile ? 9 : -14);
     camera.lookAt(0, 0, 0);
@@ -301,7 +301,7 @@ const CameraController: React.FC<{
     camera.aspect = size.width / size.height;
     camera.updateProjectionMatrix();
   }, [size.width, size.height, camera]);
-  
+
   useEffect(() => {
     const checkControls = () => {
       if (controlsRef?.current) {
@@ -309,16 +309,16 @@ const CameraController: React.FC<{
       }
       return false;
     };
-    
+
     if (!checkControls()) {
       const timeout = setTimeout(() => {
         checkControls();
       }, 100);
-      
+
       return () => clearTimeout(timeout);
     }
   }, [controlsRef]);
-  
+
   return (
     <CameraControls
       ref={controlsRef}
@@ -371,21 +371,19 @@ const DetailsSidebar: React.FC<{
           ×
         </button>
       </div>
-      
-      <div className={`mb-3 p-2 rounded flex items-center ${
-        isAvailable ? 'bg-sage-50 text-sage-800' : 'bg-red-50 text-red-800'
-      }`}>
-        <div className={`w-3 h-3 rounded-full mr-2 ${
-          isAvailable ? 'bg-sage-500' : 'bg-red-700'
-        }`}></div>
+
+      <div className={`mb-3 p-2 rounded flex items-center ${isAvailable ? 'bg-sage-50 text-sage-800' : 'bg-red-50 text-red-800'
+        }`}>
+        <div className={`w-3 h-3 rounded-full mr-2 ${isAvailable ? 'bg-sage-500' : 'bg-red-700'
+          }`}></div>
         {isAvailable ? 'Available' : 'Occupied'}
       </div>
-      
+
       <div className="mb-4">
         <p className="text-sm text-gray-600 mb-1">Size</p>
         <p className="font-medium">{data?.size || 'N/A'}</p>
       </div>
-      
+
       <button
         onClick={onDetailsClick}
         className="w-full bg-slate-600 hover:bg-slate-700 text-white font-medium py-2 px-4 rounded transition-colors"
@@ -410,34 +408,34 @@ function App() {
   });
   const { enabled: sceneEnabled, reason: sceneDisableReason, param: sceneParam } = scenePolicy;
   const { selectedUnit, hoveredUnit, setSelectedUnit, setHoveredUnit } = useUnitStore();
-  
+
   useEffect(() => {
     debugLog.info('App mounted', { SAFE, isMobile: PerfFlags.isMobile, tier: PerfFlags.tier });
   }, []);
   const { drawerOpen, setDrawerOpen, selectedUnitKey, getUnitData, unitDetailsOpen, setUnitDetailsOpen, show3DPopup, setShow3DPopup, hoveredUnitKey } = useExploreState();
   const { setCameraControlsRef } = useGLBState();
   const { floorPlanExpanded, setFloorPlanExpanded } = useSidebarState();
-  
+
   // Flash prevention system - triggers freeze-frame on unit selection
   const { preventFlash } = useFlashPrevention();
-  
+
   // Global hover preview state
   const [globalHoverPreview, setGlobalHoverPreview] = useState<{
     unitName: string;
     unitData: any;
     position: { x: number; y: number };
   } | null>(null);
-  
+
   // Listen for hover preview updates from ExploreUnitsPanel
   useEffect(() => {
     const handleHoverUpdate = (event: CustomEvent) => {
       setGlobalHoverPreview(event.detail);
     };
-    
+
     const handleHoverClear = () => {
       setGlobalHoverPreview(null);
     };
-    
+
     window.addEventListener('unit-hover-update' as any, handleHoverUpdate);
     window.addEventListener('unit-hover-clear' as any, handleHoverClear);
     return () => {
@@ -446,22 +444,22 @@ function App() {
     };
   }, []);
 
-  
+
   // Debug logging for state changes
-  
+
   const [showFullDetails, setShowFullDetails] = useState(false);
   const [modelsLoading, setModelsLoading] = useState(true);
   const [initialLoadCompleted, setInitialLoadCompleted] = useState(false);
-  
+
   // FlashKiller removed - no longer needed
-  
+
   // AGGRESSIVE FLASH DETECTION - Monitor setModelsLoading calls
   const originalSetModelsLoading = useRef(setModelsLoading);
   const aggressiveFlashDetection = (loading: boolean) => {
     const stack = new Error().stack;
     const currentTime = new Date().toISOString();
     const previousState = modelsLoading;
-    
+
     console.group(`🔍 LOADING STATE CHANGE: ${loading ? 'SHOW' : 'HIDE'} loading screen`);
     console.log(`⏰ Timestamp: ${currentTime}`);
     console.log(`🎯 Previous state: modelsLoading was ${previousState}`);
@@ -472,21 +470,21 @@ function App() {
       console.log(`  ${i}: ${line.trim()}`);
     });
     console.groupEnd();
-    
+
     // PREVENT RE-ENABLING LOADING SCREEN AFTER INITIAL LOAD
     if (loading && initialLoadCompleted) {
       console.error('🚨 BLOCKED: Attempt to re-enable loading screen after initial load! This would cause white flash.');
       console.log('🛡️ Loading screen re-enable blocked to prevent flash');
       return; // Don't actually set loading to true
     }
-    
+
     if (loading && !previousState) {
       console.warn('⚠️ WARNING: Loading screen being re-enabled after it was previously disabled!');
     }
-    
+
     originalSetModelsLoading.current(loading);
   };
-  
+
   // Replace setModelsLoading with detection version
   useEffect(() => {
     originalSetModelsLoading.current = setModelsLoading;
@@ -514,7 +512,7 @@ function App() {
     polygonOffsetUnits: -2,
     polygonOffsetRegex: 'slat|louver|mullion|trim|glass|window|panel',
   };
-  
+
   // Refs to store Three.js instances for shadow settings callback
   const sceneRef = useRef<THREE.Scene | null>(null);
   const glRef = useRef<THREE.WebGLRenderer | null>(null);
@@ -526,10 +524,10 @@ function App() {
     unitName: string;
     unitData?: any;
   } | null>(null);
-  
+
   // Camera controls ref for navigation
   const orbitControlsRef = useRef<CameraControls>(null);
-  
+
   // DISABLED: Preload loop was causing React hook violations and crashes
   // Calling useGLTF.preload() 10 times in a loop triggered Suspense issues
   // Will implement sequential lazy loading after Canvas mounts
@@ -539,11 +537,11 @@ function App() {
       console.log('📦 GLB preload disabled for mobile - will load lazily');
     }
   }, []);
-  
+
   // Add global error handler for mobile crashes with visible overlay
   useEffect(() => {
     const isMobile = PerfFlags.isMobile;
-    
+
     const errorHandler = (event: ErrorEvent) => {
       const msg = `${event.message} at ${event.filename}:${event.lineno}:${event.colno}`;
       console.error('🚨 GLOBAL ERROR:', event.error);
@@ -552,13 +550,13 @@ function App() {
       console.error('🚨 Line:', event.lineno, 'Col:', event.colno);
       setErrorLog(prev => [...prev, msg]);
     };
-    
+
     const rejectionHandler = (event: PromiseRejectionEvent) => {
       const msg = `Promise rejected: ${event.reason}`;
       console.error('🚨 UNHANDLED PROMISE REJECTION:', event.reason);
       setErrorLog(prev => [...prev, msg]);
     };
-    
+
     if (isMobile) {
       console.log('📱 MOBILE DEVICE DETECTED - Enhanced logging enabled');
       console.log('📱 Device info:', {
@@ -569,21 +567,21 @@ function App() {
         maxTouchPoints: navigator.maxTouchPoints || 'unknown'
       });
     }
-    
+
     window.addEventListener('error', errorHandler);
     window.addEventListener('unhandledrejection', rejectionHandler);
-    
+
     return () => {
       window.removeEventListener('error', errorHandler);
       window.removeEventListener('unhandledrejection', rejectionHandler);
     };
   }, []);
-  
+
   // CRITICAL FIX: Delay Canvas mount by 3000ms to let page load settle (iOS requires this)
   useEffect(() => {
     const delay = PerfFlags.isIOS ? 3000 : 500; // 3 seconds for iOS to fully settle
     console.log('🚀 Canvas delay:', delay + 'ms', 'iOS:', PerfFlags.isIOS);
-    
+
     const timer = setTimeout(() => {
       console.log('✅ Canvas ready - mounting WebGL');
       setCanvasReady(true);
@@ -596,14 +594,14 @@ function App() {
     const caps = detectDevice();
     return caps;
   }, []);
-  
+
   // Force shadow initialization on app start - moved after deviceCapabilities definition
   useEffect(() => {
     // Ensure shadows are properly initialized when app starts - ALWAYS enable for all devices
     // Shadow settings are now handled by SimpleShadowDebug component directly
   }, []);
   const mobileSettings = useMemo(() => getMobileOptimizedSettings(deviceCapabilities), [deviceCapabilities]);
-  
+
   useEffect(() => {
     if (!sceneEnabled) {
       MobileDiagnostics.warn('scene', '3D scene disabled', {
@@ -613,7 +611,7 @@ function App() {
       });
     }
   }, [sceneEnabled, sceneDisableReason, sceneParam]);
-  
+
   // Shadow-enabled renderer configuration (iOS-optimized)
   const glConfig = useMemo(() => {
     const config: any = {
@@ -627,20 +625,20 @@ function App() {
       premultipliedAlpha: false,
       failIfMajorPerformanceCaveat: false,
     };
-    
+
     if (PerfFlags.isIOS) {
       config.precision = "mediump";
     }
-    
+
     return config;
   }, []);
-  
+
   // Initialize memory manager for mobile devices
   useEffect(() => {
     if (deviceCapabilities.isMobile) {
       const memoryManager = MobileMemoryManager.getInstance();
       memoryManager.startMemoryMonitoring();
-      
+
       // Add iOS low memory warning handler
       if (deviceCapabilities.isIOS) {
         const handleLowMemory = () => {
@@ -650,29 +648,29 @@ function App() {
           // Let user manually reload if needed
           alert('Low memory detected. Please close other apps or reload manually.');
         };
-        
+
         // Listen for low memory events (iOS specific)
         window.addEventListener('memorywarning', handleLowMemory);
-        
+
         return () => {
           memoryManager.stopMemoryMonitoring();
           window.removeEventListener('memorywarning', handleLowMemory);
         };
       }
-      
+
       return () => {
         memoryManager.stopMemoryMonitoring();
       };
     }
   }, [deviceCapabilities.isMobile, deviceCapabilities.isIOS]);
-  
+
   // Optimized camera controls initialization with faster polling and shorter timeout
   useEffect(() => {
     setCameraControlsRef(orbitControlsRef);
-    
+
     let hasLogged = false;
     let timeoutId: NodeJS.Timeout;
-    
+
     // Set initial target position when controls are ready
     const setupInitialTarget = () => {
       if (orbitControlsRef.current && orbitControlsRef.current.target && typeof orbitControlsRef.current.target.set === 'function') {
@@ -685,12 +683,12 @@ function App() {
       }
       return false;
     };
-    
+
     // Try immediate setup (camera controls should work regardless of HDRI load status)
     if (!setupInitialTarget()) {
       let attempts = 0;
       const maxAttempts = 50; // 5 seconds max (increased for mobile)
-      
+
       const interval = setInterval(() => {
         attempts++;
         if (setupInitialTarget()) {
@@ -708,7 +706,7 @@ function App() {
           }
         }
       }, 100);
-      
+
       // Alternative: try using requestAnimationFrame for faster checking
       const trySetupRAF = () => {
         if (!setupInitialTarget() && attempts < maxAttempts) {
@@ -716,17 +714,17 @@ function App() {
         }
       };
       requestAnimationFrame(trySetupRAF);
-      
+
       return () => {
         clearInterval(interval);
         clearTimeout(timeoutId);
       };
     }
   }, [setCameraControlsRef]);
-  
+
   // Use new CSV-based data fetching
   const { data: csvUnitData, loading: isUnitDataLoading, error } = useCsvUnitData(CSV_URL);
-  
+
   // Initialize viewer and emit ready event when models are loaded
   useEffect(() => {
     if (!modelsLoading) {
@@ -755,7 +753,7 @@ function App() {
         }, 300);
       }
     }, timeout);
-    
+
     return () => clearTimeout(fallbackTimer);
   }, [deviceCapabilities, loadingPhase]);
 
@@ -774,7 +772,7 @@ function App() {
       canvas.removeEventListener('webglcontextlost', handleContextLost);
     };
   }, []);
-  
+
   // DISABLED: Context health monitor was causing "Canvas has existing context" error
   // The webglcontextlost/restored event handlers above are sufficient
   // useEffect(() => {
@@ -814,7 +812,7 @@ function App() {
   // Handle smooth transitions when sidebar width changes (floorplan expand/collapse)
   useEffect(() => {
     console.log('🔄 Floorplan expanded state changed:', floorPlanExpanded);
-    
+
     if (floorPlanExpanded) {
       console.log('✅ Adding floorplan-expanded class');
       document.body.classList.add('floorplan-expanded');
@@ -849,7 +847,7 @@ function App() {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const unitParam = urlParams.get('unit') || urlParams.get('sel');
-    
+
     if (unitParam) {
       const unitKey = unitParam.toLowerCase();
       if (unitKey in effectiveUnitData) {
@@ -861,7 +859,7 @@ function App() {
   // Log unit data for debugging
   useEffect(() => {
     // Performance: debug logging removed
-    
+
     if (error) {
     }
   }, [csvUnitData, hasValidUnitData, effectiveUnitData, error]);
@@ -872,38 +870,38 @@ function App() {
   // Integrate CSV data into explore state
   useEffect(() => {
     if (hasValidUnitData && csvUnitData) {
-      
+
       // Convert CSV data to UnitRecord format for explore state
       const unitsMap = new Map<string, UnitRecord>();
-      
+
       // Only include desired buildings
       const allowedBuildings = ['Fifth Street Building', 'Maryland Building', 'Tower Building'];
-      
+
       Object.entries(csvUnitData).forEach(([unitKey, unitData]) => {
         // Skip buildings we don't want to show
         if (!allowedBuildings.includes(unitData.building)) {
           return;
         }
-        
+
         // Skip excluded/unavailable suites at the data level
         if (isUnitExcluded(unitData.unit_name || unitData.name || unitKey)) {
           return;
         }
-        
+
         // Skip duplicate entries (we store multiple keys for same unit)
         const primaryKey = unitData.unit_key || unitKey;
         if (unitsMap.has(primaryKey)) {
           return; // Skip duplicate
         }
-        
-        
-        
+
+
+
         // Ensure floor data is present - log warning if missing
         const floorValue = unitData.floor?.toString() || '';
         if (!floorValue && unitData.building === 'Tower Building') {
           console.warn(`⚠️ Tower Building unit ${unitData.unit_name} has no floor data in CSV!`);
         }
-        
+
         const unitRecord: UnitRecord = {
           unit_key: primaryKey,
           building: unitData.building || 'Unknown',
@@ -917,31 +915,31 @@ function App() {
           unit_type: unitData.unit_type || 'Suite', // Copy unit type from CSV data
           private_offices: unitData.private_offices
         };
-        
+
         // Store with the primary key
         unitsMap.set(primaryKey, unitRecord);
-        
+
         // Also store with GLB variations for easier lookup
         unitsMap.set(`${primaryKey}.glb`, unitRecord);
         unitsMap.set(unitData.name, unitRecord);
         unitsMap.set(`${unitData.name}.glb`, unitRecord);
-        
+
       });
 
-      
+
       // Build hierarchical index
       const unitsIndex = buildUnitsIndex(unitsMap);
-      
-      
+
+
       // Update explore state
       setUnitsData(unitsMap);
       setUnitsIndex(unitsIndex);
-      
+
     }
   }, [hasValidUnitData, csvUnitData, setUnitsData, setUnitsIndex]);
 
   // Log selected unit when it changes
-  
+
   // Log sphere data when it changes
 
   const handleUnitSelect = useCallback((unitName: string) => {
@@ -962,12 +960,12 @@ function App() {
     setShowFullDetails(false);
   };
 
-  
+
   // Handle explore drawer toggle
   const handleToggleExploreDrawer = () => {
     setDrawerOpen(!drawerOpen);
   };
-  
+
   // Handle close drawer
   const handleCloseDrawer = () => {
     setDrawerOpen(false);
@@ -1006,7 +1004,7 @@ function App() {
     if (!orbitControlsRef.current || animationState.current.isAnimating) return;
 
     const controls = orbitControlsRef.current;
-    
+
     if (resetToDefault) {
       // Reset to initial position using CameraControls
       controls.reset(true);
@@ -1017,11 +1015,11 @@ function App() {
     if (targetAzimuth !== undefined) {
       controls.rotateAzimuthTo(targetAzimuth, true);
     }
-    
+
     if (targetPolar !== undefined) {
       controls.rotatePolarTo(targetPolar, true);
     }
-    
+
     if (targetDistance !== undefined) {
       const currentDistance = controls.distance;
       const dollyAmount = targetDistance / currentDistance;
@@ -1080,10 +1078,10 @@ function App() {
   const handleRequestClick = useCallback(() => {
     setShowRequestForm(true);
   }, []);
-  
+
   const handleExpandFloorplan = useCallback((floorplanUrl: string, unitName: string, unitData?: any) => {
     console.log('📋 Opening floorplan:', { floorplanUrl, unitName, isMobile: deviceCapabilities.isMobile });
-    
+
     setFloorplanPopupData({
       floorplanUrl,
       unitName,
@@ -1091,56 +1089,56 @@ function App() {
     });
     setShowFloorplanPopup(true);
   }, []);
-  
+
   const handleCloseFloorplanPopup = useCallback(() => {
     setShowFloorplanPopup(false);
     setFloorplanPopupData(null);
   }, []);
-  
+
   // Listen for mobile progressive loading events
   useEffect(() => {
     if (!PerfFlags.isMobile) return;
-    
+
     const handleLoadingUpdate = (event: CustomEvent) => {
       const { progress, message, phase } = event.detail;
       setLoadingProgress(progress);
       setLoadingPhase(phase);
       console.log(`📱 Mobile loading: ${progress}% - ${message}`);
     };
-    
+
     const handleLoadingComplete = (event: CustomEvent) => {
       const { progress, message } = event.detail;
       setLoadingProgress(100);
       setLoadingPhase('complete');
       setEffectsReady(true);
       console.log(`✅ Mobile loading complete: ${message}`);
-      
+
       setTimeout(() => {
         setModelsLoading(false);
         setInitialLoadCompleted(true);
         console.log('✅ Initial load completed (500ms timeout) - loading screen disabled permanently');
       }, 500);
     };
-    
+
     window.addEventListener('mobile-loading-update' as any, handleLoadingUpdate);
     window.addEventListener('mobile-loading-complete' as any, handleLoadingComplete);
-    
+
     return () => {
       window.removeEventListener('mobile-loading-update' as any, handleLoadingUpdate);
       window.removeEventListener('mobile-loading-complete' as any, handleLoadingComplete);
     };
   }, []);
-  
+
   // Start loading progress immediately on mount with guard to prevent infinite loop and failsafe timeout
   const loadingInitialized = useRef(false);
   useEffect(() => {
     if (loadingInitialized.current) return;
     loadingInitialized.current = true;
-    
+
     console.log('⏳ Loading initialized, iOS:', PerfFlags.isIOS, 'isMobile:', PerfFlags.isMobile);
     setLoadingPhase('initializing');
     setLoadingProgress(5);
-    
+
     // Mobile: Listen for progressive loading events instead of simulating
     if (PerfFlags.isMobile) {
       console.log('📱 Mobile: Waiting for progressive loading events...');
@@ -1148,7 +1146,7 @@ function App() {
       setLoadingPhase('loading-models');
       return;
     }
-    
+
     // Desktop: Normal loading simulation
     const earlyProgress = setInterval(() => {
       setLoadingProgress(prev => {
@@ -1156,12 +1154,12 @@ function App() {
         return prev;
       });
     }, 100);
-    
+
     setTimeout(() => {
       setLoadingPhase('loading-assets');
       clearInterval(earlyProgress);
     }, 1000);
-    
+
     // Failsafe: force complete after 12 seconds on mobile (10s on desktop)
     const failsafeTimeout = setTimeout(() => {
       if (loadingPhase !== 'complete') {
@@ -1176,7 +1174,7 @@ function App() {
         }, 300);
       }
     }, deviceCapabilities.isMobile ? 12000 : 10000);
-    
+
     return () => {
       clearInterval(earlyProgress);
       clearTimeout(failsafeTimeout);
@@ -1188,12 +1186,12 @@ function App() {
     const modelProgress = Math.round((loaded / total) * 55) + 15;
     setLoadingProgress(modelProgress);
     setLoadingPhase('loading-models');
-    
+
     if (loaded >= total) {
       setLoadingProgress(100);
       setLoadingPhase('complete');
       setEffectsReady(true);
-      
+
       // Hide loading screen immediately
       setTimeout(() => {
         setModelsLoading(false);
@@ -1209,433 +1207,435 @@ function App() {
 
   return (
     <FloorplanContext.Provider value={floorplanContextValue}>
-    <SafariErrorBoundary>
-      {/* FlashKiller REMOVED - was causing black screen interruptions */}
-      {/* Loading screen - Portaled to body for true full-screen centering */}
-      {modelsLoading && console.log('🚨 FLASH: Loading overlay is visible! (no more white flash)')}
-      {modelsLoading && ReactDOM.createPortal(
-        <div className="fixed inset-0 flex justify-center items-center" 
-             style={{ 
-               background: 'white',
-               zIndex: 9999,
-               transition: 'opacity 0.3s ease-in-out'
-             }}>
-          <div className="text-center">
-            
-            {/* Pulsating GIF Logo */}
-            <div className="mb-8">
-              <div style={{
-                overflow: 'hidden',
-                maxWidth: '20rem',
-                margin: '0 auto 1rem'
-              }}>
-                <img 
-                  src={assetUrl('textures/333999.gif')} 
-                  alt="Loading" 
-                  className="w-full"
-                  style={{ 
-                    filter: 'none',
-                    animation: 'pulse 2s ease-in-out infinite',
-                    marginBottom: '-3px'
-                  }}
-                />
-              </div>
-            </div>
-            
-            {/* Loading Progress */}
-            <div className="mb-6">
-              <div className="bg-gray-200 rounded-full h-3 w-80 mx-auto overflow-hidden">
-                <div 
-                  className="bg-gray-600 h-full rounded-full transition-all duration-300 ease-out"
-                  style={{ width: `${loadingProgress}%` }}
-                ></div>
-              </div>
-              
-              {/* Loading Phase Text */}
-              <p className="text-gray-600 text-sm mt-3">
-                {loadingPhase === 'initializing' && 'Initializing...'}
-                {loadingPhase === 'loading-assets' && 'Loading assets...'}
-                {loadingPhase === 'loading-models' && `Loading models... ${loadingProgress}%`}
-                {loadingPhase === 'validating-materials' && 'Validating materials...'}
-                {loadingPhase === 'compiling-shaders' && 'Compiling shaders...'}
-                {loadingPhase === 'enabling-effects' && 'Enabling post-processing...'}
-                {loadingPhase === 'complete' && 'Ready!'}
-              </p>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {/* Visible Error Overlay - Always on top */}
-      {errorLog.length > 0 && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          background: '#dc2626',
-          color: 'white',
-          padding: '10px 20px',
-          zIndex: 999999,
-          fontSize: '14px',
-          fontFamily: 'monospace',
-          maxHeight: '200px',
-          overflow: 'auto',
-          boxShadow: '0 4px 6px rgba(0,0,0,0.3)'
-        }}>
-          <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>
-            🚨 ERRORS DETECTED ({errorLog.length})
-          </div>
-          {errorLog.map((err, i) => (
-            <div key={i} style={{ 
-              padding: '5px 0', 
-              borderBottom: i < errorLog.length - 1 ? '1px solid rgba(255,255,255,0.3)' : 'none'
+      <SafariErrorBoundary>
+        {/* FlashKiller REMOVED - was causing black screen interruptions */}
+        {/* Loading screen - Portaled to body for true full-screen centering */}
+        {modelsLoading && console.log('🚨 FLASH: Loading overlay is visible! (no more white flash)')}
+        {modelsLoading && ReactDOM.createPortal(
+          <div className="fixed inset-0 flex justify-center items-center"
+            style={{
+              background: 'white',
+              zIndex: 9999,
+              transition: 'opacity 0.3s ease-in-out'
             }}>
-              {err}
-            </div>
-          ))}
-        </div>
-      )}
+            <div className="text-center">
 
-      <div className="app-viewport">
-        <div className="app-layout">
-          <div 
-            className="scene-shell"
-          >
-{/* CSV loads in background - logo screen moved outside viewport */}
-        
-        {error && (
-          <div className="absolute top-4 right-4 bg-yellow-100 border border-yellow-400 text-yellow-700 px-3 py-2 rounded-md text-sm z-10">
-            Using offline data - CSV unavailable: {error}
-          </div>
-        )}
-
-
-        
-        
-        
-        {/* CRITICAL FIX: Wrap canvas in error boundary to catch mobile crashes */}
-        {canvasReady && sceneEnabled && (
-        <MobileErrorBoundary>
-        {console.log('🎬 Rendering RootCanvas - canvasReady:', canvasReady, 'sceneEnabled:', sceneEnabled)}
-        <RootCanvas
-          shadows={mobileSettings.shadows}
-          dpr={mobileSettings.pixelRatio}
-          camera={{ position: [-10, 10, -14], fov: 45, near: 0.5, far: 2000 }}
-          style={{
-            width: '100%',
-            height: '100%',
-            filter: "none",
-            backgroundColor: '#000000' // Prevent white canvas background
-          }}
-          gl={glConfig}
-          frameloop={PerfFlags.isIOS && showFloorplanPopup ? "demand" : "always"}
-          onTierChange={setRenderTier}
-          onCreated={({ camera }) => {
-            console.log('🎨 Canvas created - Mobile safe-mode:', deviceCapabilities.isMobile);
-            console.log('  - DPR:', mobileSettings.pixelRatio);
-            console.log('  - Shadows:', mobileSettings.shadows);
-            console.log('  - HDRI res:', mobileSettings.hdriResolution);
-            console.log('  - Texture max:', mobileSettings.textureSize);
-            camera.lookAt(0, 0, 0);
-          }}
-        >
-          {(tier) => (
-            <>
-              {/* MOBILE-OPTIMIZED Environment - Prevents context loss on mobile */}
-              <MobileEnvironment
-                backgroundIntensity={deviceCapabilities.isMobile ? 0.4 : 1.6}
-                environmentIntensity={deviceCapabilities.isMobile ? 0.3 : 1.2}
-              />
-
-              {/* Lighting System - Mobile-safe preset uses simple lighting */}
-              {mobileSettings.useSimpleLighting ? (
-                <>
-                  {/* MOBILE SAFE-MODE: Basic ambient + directional only */}
-                  <ambientLight intensity={0.4} />
-                  <directionalLight 
-                    position={[-34, 78, 28]} 
-                    intensity={4.0} 
-                    castShadow={false}
+              {/* Pulsating GIF Logo */}
+              <div className="mb-8">
+                <div style={{
+                  overflow: 'hidden',
+                  maxWidth: '20rem',
+                  margin: '0 auto 1rem'
+                }}>
+                  <img
+                    src={assetUrl('textures/333999.gif')}
+                    alt="Loading"
+                    className="w-full"
+                    style={{
+                      filter: 'none',
+                      animation: 'pulse 2s ease-in-out infinite',
+                      marginBottom: '-3px'
+                    }}
                   />
-                  {console.log('💡 Using SIMPLE LIGHTING (mobile safe-mode)')}
-                </>
-              ) : (
-                <>
-                  {/* DESKTOP: Adaptive lighting with shadows */}
-                  {sceneRef.current && (
-                    <>
-                      <AdaptiveLighting scene={sceneRef.current} tier={tier} />
-                      <SoftShadowsController tier={tier} />
-                    </>
-                  )}
-                </>
-              )}
-              
-              {/* Shadow Debug Helper */}
-              <ShadowHelper enabled={debugState.showShadowHelper} />
+                </div>
+              </div>
 
-              {/* Fog - Disabled on mobile per safe-mode preset */}
-              {!mobileSettings.disableFog && (
-                <>
-                  {tier.startsWith('desktop') && <fogExp2 attach="fog" args={['#b8d0e8', 0.004]} />}
-                  <AtmosphericFog />
-                </>
-              )}
+              {/* Loading Progress */}
+              <div className="mb-6">
+                <div className="bg-gray-200 rounded-full h-3 w-80 mx-auto overflow-hidden">
+                  <div
+                    className="bg-gray-600 h-full rounded-full transition-all duration-300 ease-out"
+                    style={{ width: `${loadingProgress}%` }}
+                  ></div>
+                </div>
 
-              {/* Capture scene and gl for external callbacks */}
-              <SceneCapture sceneRef={sceneRef} glRef={glRef} />
-
-              {/* 3D Scene - Testing Single Environment Mesh */}
-              <SingleEnvironmentMesh tier={renderTier} />
-
-              {/* GLB Manager for unit highlighting and interaction */}
-              <GLBManager />
-              
-              {/* Frustum Culling for performance - only render visible objects */}
-              <FrustumCuller />
-
-              {/* Unit Glow Highlight - FIXED: Only glows selected unit, no mass mesh creation */}
-              <UnitGlowHighlightFixed />
-              {/* OLD BROKEN VERSION: <UnitGlowHighlight /> */}
-
-              {/* Canvas Click Handler for clearing selection */}
-              <CanvasClickHandler />
-              
-              {/* Canvas Resize Handler for smooth sidebar transitions */}
-              <CanvasResizeHandler />
-
-              {/* God Rays Effect - DISABLED for testing new environment mesh */}
-              {/* {effectsReady && <GodRays />} */}
-
-              {/* Enhanced Camera Controls with proper object framing */}
-              <CameraController selectedUnit={selectedUnit} controlsRef={orbitControlsRef} />
-
-
-
-              {/* Performance Governor - mobile FPS enforcement */}
-              <PerformanceGovernorComponent />
-
-              {/* WebGL Context Recovery */}
-              <WebGLRecovery />
-              
-              {/* Enhanced Context Recovery for Mobile */}
-              <WebGLContextRecovery />
-
-              {/* Post-processing - Disabled on mobile per safe-mode preset */}
-              {!mobileSettings.postProcessing && !SAFE && effectsReady && debugState.ao && !debugState.pathtracer && (
-                <AdaptiveEffects tier={tier} />
-              )}
-              {mobileSettings.postProcessing && console.log('⚠️ Post-processing DISABLED (mobile safe-mode)')}
-
-              {/* GPU Path Tracer - DISABLED for production to prevent Suspense fallbacks */}
-              {false && effectsReady && debugState.pathtracer && (
-                <Suspense fallback={null}>
-                  <PathTracer 
-                    enabled={debugState.pathtracer} 
-                    tier={renderTier}
-                    bounces={debugState.ptBounces}
-                    renderScale={0.5}
-                    tiles={{ x: 2, y: 2 }}
-                  />
-                </Suspense>
-              )}
-
-              {/* 3D Scene Popup */}
-              <Unit3DPopupOverlay
-                onExpand={() => {
-                  setShow3DPopup(false);
-                  setUnitDetailsOpen(true);
-                }}
-                onRequest={(unitKey) => {
-                  const unitData = getUnitData(unitKey);
-                  setRequestUnitKey(unitKey);
-                  setRequestUnitName(unitData?.unit_name || unitKey);
-                  setShowSingleUnitRequest(true);
-                }}
-                onClose={() => setShow3DPopup(false)}
-              />
-            </>
-          )}
-        </RootCanvas>
-        
-        {/* Flash Prevention System - OUTSIDE Canvas but overlays entire screen */}
-        {/* TEMPORARILY DISABLED: FlashKiller was showing black screen freeze-frame */}
-        {/* <FlashKiller isActive={preventFlash} duration={400} /> */}
-        
-        {/* Transition Mask - DISABLED: Was causing black flash when clicking units */}
-        {/* <TransitionMask /> */}
-        
-        </MobileErrorBoundary>
-        )}
-
-        {!sceneEnabled && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-100/80 border border-dashed border-slate-300 rounded-2xl text-center px-6 py-8">
-            <p className="font-semibold text-slate-800">3D scene disabled for mobile UI focus</p>
-            <p className="text-sm text-slate-600 mt-2 max-w-sm">
-              {sceneDisableReason === 'forced-off'
-                ? 'The ?scene=0 flag is active. Remove it or set ?scene=1 to re-enable the 3D environment.'
-                : 'Mobile safe mode temporarily disables the 3D environment. Append ?scene=1 to the URL if you need to test it.'}
-            </p>
-          </div>
-        )}
-        
-
-
-          </div>  {/* Close scene-shell */}
-        
-        
-        
-
-        {/* Camera Controls - Desktop Only (Mobile uses touch controls) */}
-        {sceneEnabled && !modelsLoading && !deviceCapabilities.isMobile && (
-          <div 
-            className="fixed bottom-6 z-40 camera-controls-desktop -translate-x-1/2"
-          >
-            <div className="bg-white/90 backdrop-blur-md rounded-lg shadow-xl border border-black/5 p-3">
-              <div className="grid grid-cols-5 gap-2">
-                <button
-                  className="rounded-lg border border-black/10 bg-white px-2 py-1.5 text-xs shadow-sm hover:shadow transition flex items-center justify-center"
-                  onClick={handleRotateLeft}
-                  title="Rotate Left"
-                >
-                  <RotateCcw size={14} />
-                </button>
-                <button
-                  className="rounded-lg border border-black/10 bg-white px-2 py-1.5 text-xs shadow-sm hover:shadow transition flex items-center justify-center"
-                  onClick={handleRotateRight}
-                  title="Rotate Right"
-                >
-                  <RotateCw size={14} />
-                </button>
-                <button
-                  className="rounded-lg border border-black/10 bg-white px-2 py-1.5 text-xs shadow-sm hover:shadow transition flex items-center justify-center"
-                  onClick={handleZoomIn}
-                  title="Zoom In"
-                >
-                  <ZoomIn size={14} />
-                </button>
-                <button
-                  className="rounded-lg border border-black/10 bg-white px-2 py-1.5 text-xs shadow-sm hover:shadow transition flex items-center justify-center"
-                  onClick={handleZoomOut}
-                  title="Zoom Out"
-                >
-                  <ZoomOut size={14} />
-                </button>
-                <button
-                  className="rounded-lg border border-black/10 bg-white px-2 py-1.5 text-xs shadow-sm hover:shadow transition flex items-center justify-center"
-                  onClick={handleResetView}
-                  title="Reset View"
-                >
-                  <Home size={14} />
-                </button>
+                {/* Loading Phase Text */}
+                <p className="text-gray-600 text-sm mt-3">
+                  {loadingPhase === 'initializing' && 'Initializing...'}
+                  {loadingPhase === 'loading-assets' && 'Loading assets...'}
+                  {loadingPhase === 'loading-models' && `Loading models... ${loadingProgress}%`}
+                  {loadingPhase === 'validating-materials' && 'Validating materials...'}
+                  {loadingPhase === 'compiling-shaders' && 'Compiling shaders...'}
+                  {loadingPhase === 'enabling-effects' && 'Enabling post-processing...'}
+                  {loadingPhase === 'complete' && 'Ready!'}
+                </p>
               </div>
             </div>
+          </div>,
+          document.body
+        )}
+
+        {/* Visible Error Overlay - Always on top */}
+        {errorLog.length > 0 && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            background: '#dc2626',
+            color: 'white',
+            padding: '10px 20px',
+            zIndex: 999999,
+            fontSize: '14px',
+            fontFamily: 'monospace',
+            maxHeight: '200px',
+            overflow: 'auto',
+            boxShadow: '0 4px 6px rgba(0,0,0,0.3)'
+          }}>
+            <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>
+              🚨 ERRORS DETECTED ({errorLog.length})
+            </div>
+            {errorLog.map((err, i) => (
+              <div key={i} style={{
+                padding: '5px 0',
+                borderBottom: i < errorLog.length - 1 ? '1px solid rgba(255,255,255,0.3)' : 'none'
+              }}>
+                {err}
+              </div>
+            ))}
           </div>
         )}
 
-        {/* New Sidebar - All devices */}
-        {!modelsLoading && (
-          <Sidebar />
-        )}
+        <div className="app-viewport">
+          <div className="app-layout">
+            <div
+              className="scene-shell"
+            >
+              {/* CSV loads in background - logo screen moved outside viewport */}
 
-        
-        {/* Dynamic Details Sidebar */}
-        <DetailsSidebar
-          selectedUnit={selectedUnit}
-          unitData={effectiveUnitData}
-          onDetailsClick={handleDetailsClick}
-          onClose={handleCloseSidebar}
-        />
-        
+              {error && (
+                <div className="absolute top-4 right-4 bg-yellow-100 border border-yellow-400 text-yellow-700 px-3 py-2 rounded-md text-sm z-10">
+                  Using offline data - CSV unavailable: {error}
+                </div>
+              )}
 
-        
-        {/* Hover Toast - using new component */}
-        <HoverToast />
-      
-      {/* Full Unit Detail Popup */}
-      {showFullDetails && (
-        <UnitDetailPopup 
-          selectedUnit={selectedUnit}
-          unitData={effectiveUnitData}
-          onClose={handleCloseDetails}
-        />
-      )}
 
-      {/* Explore Suites Details Popup - Center of Scene (Desktop Only) */}
-      {!deviceCapabilities.isMobile && !PerfFlags.isMobile && (
-        <UnitDetailsPopup
-          unit={selectedUnitKey ? getUnitData(selectedUnitKey) || {
-            unit_key: selectedUnitKey,
-            unit_name: selectedUnitKey.toUpperCase(),
-            status: 'Unknown',
-            recipients: [],
-            area_sqft: undefined,
-            price_per_sqft: undefined,
-            lease_term: undefined,
-            notes: 'Unit data not available in CSV',
-            floorplan_url: undefined
-          } as any : null}
-          isOpen={unitDetailsOpen}
-          onClose={() => {
-            setUnitDetailsOpen(false);
-          }}
-        />
-      )}
 
-      {/* Request Form */}
-      <UnitRequestForm
-        isOpen={showRequestForm}
-        onClose={() => setShowRequestForm(false)}
-      />
-      
-      {/* Single Unit Request Form */}
-      {showSingleUnitRequest && (
-        <SingleUnitRequestForm
-          isOpen={showSingleUnitRequest}
-          onClose={() => {
-            setShowSingleUnitRequest(false);
-          }}
-          unitKey={requestUnitKey}
-          unitName={requestUnitName}
-        />
-      )}
 
-      {/* Shadow Debug UI - DISABLED (using RealisticSun instead) */}
-      
-      {/* Floorplan Popup */}
-      <FloorplanPopup
-        isOpen={showFloorplanPopup && !!floorplanPopupData}
-        onClose={handleCloseFloorplanPopup}
-        floorplanUrl={floorplanPopupData?.floorplanUrl || ''}
-        unitName={floorplanPopupData?.unitName || ''}
-        unitData={floorplanPopupData?.unitData}
-      />
-      
-      {/* Debug info removed */}
-      
-      {/* Global Hover Preview - Rendered at App level for true global positioning */}
-      {globalHoverPreview && (
-        <UnitHoverPreview
-          unitName={globalHoverPreview.unitName}
-          unitData={globalHoverPreview.unitData}
-          position={globalHoverPreview.position}
-          isVisible={true}
-        />
-      )}
 
-      {/* Sun Position Controls - Removed, values hard-coded */}
-      
-      
-      {/* Error Log Display - Shows persisted errors for mobile debugging */}
-      <ErrorLogDisplay />
-      
-      {/* Safari Debug Banner - On-screen debugging for real iOS devices */}
-      <SafariDebugBanner />
-        </div>  {/* Close app-layout */}
-      </div>  {/* Close app-viewport */}
-    </SafariErrorBoundary>
+              {/* CRITICAL FIX: Wrap canvas in error boundary to catch mobile crashes */}
+              {canvasReady && sceneEnabled && (
+                <MobileErrorBoundary>
+                  {console.log('🎬 Rendering RootCanvas - canvasReady:', canvasReady, 'sceneEnabled:', sceneEnabled)}
+                  <RootCanvas
+                    shadows={mobileSettings.shadows}
+                    dpr={mobileSettings.pixelRatio}
+                    camera={{ position: [-10, 10, -14], fov: 45, near: 0.5, far: 2000 }}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      filter: "none",
+                      backgroundColor: 'transparent' // Prevent white canvas background
+                    }}
+                    gl={glConfig}
+                    frameloop={PerfFlags.isIOS && showFloorplanPopup ? "demand" : "always"}
+                    onTierChange={setRenderTier}
+                    onCreated={({ camera }) => {
+                      console.log('🎨 Canvas created - Mobile safe-mode:', deviceCapabilities.isMobile);
+                      console.log('  - DPR:', mobileSettings.pixelRatio);
+                      console.log('  - Shadows:', mobileSettings.shadows);
+                      console.log('  - HDRI res:', mobileSettings.hdriResolution);
+                      console.log('  - Texture max:', mobileSettings.textureSize);
+                      camera.lookAt(0, 0, 0);
+                    }}
+                  >
+                    {(tier) => (
+                      <>
+                        {/* MOBILE-OPTIMIZED Environment - Prevents context loss on mobile */}
+                        <MobileEnvironment
+                          backgroundIntensity={deviceCapabilities.isMobile ? 0.4 : 1.6}
+                          environmentIntensity={deviceCapabilities.isMobile ? 0.3 : 1.2}
+                        />
+
+                        {/* Lighting System - Mobile-safe preset uses simple lighting */}
+                        {mobileSettings.useSimpleLighting ? (
+                          <>
+                            {/* MOBILE SAFE-MODE: Basic ambient + directional only */}
+                            <ambientLight intensity={0.4} />
+                            <directionalLight
+                              position={[-34, 78, 28]}
+                              intensity={4.0}
+                              castShadow={false}
+                            />
+                            {console.log('💡 Using SIMPLE LIGHTING (mobile safe-mode)')}
+                          </>
+                        ) : (
+                          <>
+                            {/* DESKTOP: Adaptive lighting with shadows */}
+                            {sceneRef.current && (
+                              <>
+                                <AdaptiveLighting scene={sceneRef.current} tier={tier} />
+                                <SoftShadowsController tier={tier} />
+                              </>
+                            )}
+                          </>
+                        )}
+
+                        {/* Shadow Debug Helper */}
+                        <ShadowHelper enabled={debugState.showShadowHelper} />
+
+                        {/* Fog - Disabled on mobile per safe-mode preset */}
+                        {!mobileSettings.disableFog && (
+                          <>
+                            {tier.startsWith('desktop') && <fogExp2 attach="fog" args={['#b8d0e8', 0.004]} />}
+                            <AtmosphericFog />
+                          </>
+                        )}
+
+                        {/* Capture scene and gl for external callbacks */}
+                        <SceneCapture sceneRef={sceneRef} glRef={glRef} />
+
+                        {/* 3D Scene - Testing Single Environment Mesh */}
+                        <SingleEnvironmentMesh tier={renderTier} />
+
+                        {/* GLB Manager for unit highlighting and interaction */}
+                        <Suspense fallback={null}>
+                          <GLBManager />
+                        </Suspense>
+
+                        {/* Frustum Culling for performance - only render visible objects */}
+                        <FrustumCuller />
+
+                        {/* Unit Glow Highlight - FIXED: Only glows selected unit, no mass mesh creation */}
+                        <UnitGlowHighlightFixed />
+                        {/* OLD BROKEN VERSION: <UnitGlowHighlight /> */}
+
+                        {/* Canvas Click Handler for clearing selection */}
+                        <CanvasClickHandler />
+
+                        {/* Canvas Resize Handler for smooth sidebar transitions */}
+                        <CanvasResizeHandler />
+
+                        {/* God Rays Effect - DISABLED for testing new environment mesh */}
+                        {/* {effectsReady && <GodRays />} */}
+
+                        {/* Enhanced Camera Controls with proper object framing */}
+                        <CameraController selectedUnit={selectedUnit} controlsRef={orbitControlsRef} />
+
+
+
+                        {/* Performance Governor - mobile FPS enforcement */}
+                        <PerformanceGovernorComponent />
+
+                        {/* WebGL Context Recovery */}
+                        <WebGLRecovery />
+
+                        {/* Enhanced Context Recovery for Mobile */}
+                        <WebGLContextRecovery />
+
+                        {/* Post-processing - Disabled on mobile per safe-mode preset */}
+                        {!mobileSettings.postProcessing && !SAFE && effectsReady && debugState.ao && !debugState.pathtracer && (
+                          <AdaptiveEffects tier={tier} />
+                        )}
+                        {mobileSettings.postProcessing && console.log('⚠️ Post-processing DISABLED (mobile safe-mode)')}
+
+                        {/* GPU Path Tracer - DISABLED for production to prevent Suspense fallbacks */}
+                        {false && effectsReady && debugState.pathtracer && (
+                          <Suspense fallback={null}>
+                            <PathTracer
+                              enabled={debugState.pathtracer}
+                              tier={renderTier}
+                              bounces={debugState.ptBounces}
+                              renderScale={0.5}
+                              tiles={{ x: 2, y: 2 }}
+                            />
+                          </Suspense>
+                        )}
+
+                        {/* 3D Scene Popup */}
+                        <Unit3DPopupOverlay
+                          onExpand={() => {
+                            setShow3DPopup(false);
+                            setUnitDetailsOpen(true);
+                          }}
+                          onRequest={(unitKey) => {
+                            const unitData = getUnitData(unitKey);
+                            setRequestUnitKey(unitKey);
+                            setRequestUnitName(unitData?.unit_name || unitKey);
+                            setShowSingleUnitRequest(true);
+                          }}
+                          onClose={() => setShow3DPopup(false)}
+                        />
+                      </>
+                    )}
+                  </RootCanvas>
+
+                  {/* Flash Prevention System - OUTSIDE Canvas but overlays entire screen */}
+                  {/* TEMPORARILY DISABLED: FlashKiller was showing black screen freeze-frame */}
+                  {/* <FlashKiller isActive={preventFlash} duration={400} /> */}
+
+                  {/* Transition Mask - DISABLED: Was causing black flash when clicking units */}
+                  {/* <TransitionMask /> */}
+
+                </MobileErrorBoundary>
+              )}
+
+              {!sceneEnabled && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-100/80 border border-dashed border-slate-300 rounded-2xl text-center px-6 py-8">
+                  <p className="font-semibold text-slate-800">3D scene disabled for mobile UI focus</p>
+                  <p className="text-sm text-slate-600 mt-2 max-w-sm">
+                    {sceneDisableReason === 'forced-off'
+                      ? 'The ?scene=0 flag is active. Remove it or set ?scene=1 to re-enable the 3D environment.'
+                      : 'Mobile safe mode temporarily disables the 3D environment. Append ?scene=1 to the URL if you need to test it.'}
+                  </p>
+                </div>
+              )}
+
+
+
+            </div>  {/* Close scene-shell */}
+
+
+
+
+            {/* Camera Controls - Desktop Only (Mobile uses touch controls) */}
+            {sceneEnabled && !modelsLoading && !deviceCapabilities.isMobile && (
+              <div
+                className="fixed bottom-6 z-40 camera-controls-desktop -translate-x-1/2"
+              >
+                <div className="bg-white/90 backdrop-blur-md rounded-lg shadow-xl border border-black/5 p-3">
+                  <div className="grid grid-cols-5 gap-2">
+                    <button
+                      className="rounded-lg border border-black/10 bg-white px-2 py-1.5 text-xs shadow-sm hover:shadow transition flex items-center justify-center"
+                      onClick={handleRotateLeft}
+                      title="Rotate Left"
+                    >
+                      <RotateCcw size={14} />
+                    </button>
+                    <button
+                      className="rounded-lg border border-black/10 bg-white px-2 py-1.5 text-xs shadow-sm hover:shadow transition flex items-center justify-center"
+                      onClick={handleRotateRight}
+                      title="Rotate Right"
+                    >
+                      <RotateCw size={14} />
+                    </button>
+                    <button
+                      className="rounded-lg border border-black/10 bg-white px-2 py-1.5 text-xs shadow-sm hover:shadow transition flex items-center justify-center"
+                      onClick={handleZoomIn}
+                      title="Zoom In"
+                    >
+                      <ZoomIn size={14} />
+                    </button>
+                    <button
+                      className="rounded-lg border border-black/10 bg-white px-2 py-1.5 text-xs shadow-sm hover:shadow transition flex items-center justify-center"
+                      onClick={handleZoomOut}
+                      title="Zoom Out"
+                    >
+                      <ZoomOut size={14} />
+                    </button>
+                    <button
+                      className="rounded-lg border border-black/10 bg-white px-2 py-1.5 text-xs shadow-sm hover:shadow transition flex items-center justify-center"
+                      onClick={handleResetView}
+                      title="Reset View"
+                    >
+                      <Home size={14} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* New Sidebar - All devices */}
+            {!modelsLoading && (
+              <Sidebar />
+            )}
+
+
+            {/* Dynamic Details Sidebar */}
+            <DetailsSidebar
+              selectedUnit={selectedUnit}
+              unitData={effectiveUnitData}
+              onDetailsClick={handleDetailsClick}
+              onClose={handleCloseSidebar}
+            />
+
+
+
+            {/* Hover Toast - using new component */}
+            <HoverToast />
+
+            {/* Full Unit Detail Popup */}
+            {showFullDetails && (
+              <UnitDetailPopup
+                selectedUnit={selectedUnit}
+                unitData={effectiveUnitData}
+                onClose={handleCloseDetails}
+              />
+            )}
+
+            {/* Explore Suites Details Popup - Center of Scene (Desktop Only) */}
+            {!deviceCapabilities.isMobile && !PerfFlags.isMobile && (
+              <UnitDetailsPopup
+                unit={selectedUnitKey ? getUnitData(selectedUnitKey) || {
+                  unit_key: selectedUnitKey,
+                  unit_name: selectedUnitKey.toUpperCase(),
+                  status: 'Unknown',
+                  recipients: [],
+                  area_sqft: undefined,
+                  price_per_sqft: undefined,
+                  lease_term: undefined,
+                  notes: 'Unit data not available in CSV',
+                  floorplan_url: undefined
+                } as any : null}
+                isOpen={unitDetailsOpen}
+                onClose={() => {
+                  setUnitDetailsOpen(false);
+                }}
+              />
+            )}
+
+            {/* Request Form */}
+            <UnitRequestForm
+              isOpen={showRequestForm}
+              onClose={() => setShowRequestForm(false)}
+            />
+
+            {/* Single Unit Request Form */}
+            {showSingleUnitRequest && (
+              <SingleUnitRequestForm
+                isOpen={showSingleUnitRequest}
+                onClose={() => {
+                  setShowSingleUnitRequest(false);
+                }}
+                unitKey={requestUnitKey}
+                unitName={requestUnitName}
+              />
+            )}
+
+            {/* Shadow Debug UI - DISABLED (using RealisticSun instead) */}
+
+            {/* Floorplan Popup */}
+            <FloorplanPopup
+              isOpen={showFloorplanPopup && !!floorplanPopupData}
+              onClose={handleCloseFloorplanPopup}
+              floorplanUrl={floorplanPopupData?.floorplanUrl || ''}
+              unitName={floorplanPopupData?.unitName || ''}
+              unitData={floorplanPopupData?.unitData}
+            />
+
+            {/* Debug info removed */}
+
+            {/* Global Hover Preview - Rendered at App level for true global positioning */}
+            {globalHoverPreview && (
+              <UnitHoverPreview
+                unitName={globalHoverPreview.unitName}
+                unitData={globalHoverPreview.unitData}
+                position={globalHoverPreview.position}
+                isVisible={true}
+              />
+            )}
+
+            {/* Sun Position Controls - Removed, values hard-coded */}
+
+
+            {/* Error Log Display - Shows persisted errors for mobile debugging */}
+            <ErrorLogDisplay />
+
+            {/* Safari Debug Banner - On-screen debugging for real iOS devices */}
+            <SafariDebugBanner />
+          </div>  {/* Close app-layout */}
+        </div>  {/* Close app-viewport */}
+      </SafariErrorBoundary>
     </FloorplanContext.Provider>
   );
 }

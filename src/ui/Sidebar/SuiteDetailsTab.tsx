@@ -1,20 +1,21 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useExploreState } from '../../store/exploreState';
 import { useFloorplan } from '../../contexts/FloorplanContext';
-import { 
-  MapPin, 
-  Square, 
+// @ts-ignore
+import {
+  MapPin,
+  Square,
   FileText,
   Share,
   CheckCircle,
   Maximize2,
   ArrowUp
 } from 'lucide-react';
-import { 
-  isTowerUnit, getTowerUnitIndividualFloorplan, getTowerUnitFloorFloorplan, 
+import {
+  isTowerUnit, getTowerUnitIndividualFloorplan, getTowerUnitFloorFloorplan,
   isMarylandUnit, getMarylandUnitIndividualFloorplan, getMarylandUnitFloorFloorplan,
   isFifthStreetUnit, getFifthStreetUnitIndividualFloorplan, getFifthStreetUnitFloorFloorplan,
-  getFloorplanUrl as getIntelligentFloorplanUrl 
+  getFloorplanUrl as getIntelligentFloorplanUrl
 } from '../../services/floorplanMappingService';
 import { getFloorplanUrl as encodeFloorplanUrl } from '../../services/floorplanService';
 
@@ -32,7 +33,6 @@ export function SuiteDetailsTab() {
   const { selectedUnitKey, unitsData } = useExploreState();
   const { openFloorplan } = useFloorplan();
   const [shareUrlCopied, setShareUrlCopied] = useState(false);
-  const [showIndividualFloorplan, setShowIndividualFloorplan] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -41,24 +41,24 @@ export function SuiteDetailsTab() {
   const isTower = displayUnit ? isTowerUnit(displayUnit.unit_name || '') : false;
   const isMaryland = displayUnit ? isMarylandUnit(displayUnit.unit_name || '') : false;
   const isFifthStreet = displayUnit ? isFifthStreetUnit(displayUnit.unit_name || '') : false;
-  
+
   const individualFloorplan = displayUnit ? (
     isTower ? getTowerUnitIndividualFloorplan(displayUnit.unit_name || '') :
-    isMaryland ? getMarylandUnitIndividualFloorplan(displayUnit.unit_name || '') :
-    isFifthStreet ? getFifthStreetUnitIndividualFloorplan(displayUnit.unit_name || '') :
-    null
+      isMaryland ? getMarylandUnitIndividualFloorplan(displayUnit.unit_name || '') :
+        isFifthStreet ? getFifthStreetUnitIndividualFloorplan(displayUnit.unit_name || '') :
+          null
   ) : null;
-  
+
   const hasIndividualFloorplan = (isTower || isMaryland || isFifthStreet) && individualFloorplan;
-  
+
   const getFloorplanUrl = () => {
     if (!displayUnit || !displayUnit.unit_name) {
       return null;
     }
-    
+
     // For units with multiple floorplans (Tower, Maryland, Fifth Street)
-    if ((isTower || isMaryland || isFifthStreet) && showIndividualFloorplan && hasIndividualFloorplan) {
-      // Show individual unit floorplan
+    if (isTower || isMaryland || isFifthStreet) {
+      // DEFAULT: Show individual unit floorplan (Top Slot)
       let individualFloorplan = null;
       if (isTower) {
         individualFloorplan = getTowerUnitIndividualFloorplan(displayUnit.unit_name);
@@ -67,11 +67,13 @@ export function SuiteDetailsTab() {
       } else if (isFifthStreet) {
         individualFloorplan = getFifthStreetUnitIndividualFloorplan(displayUnit.unit_name);
       }
-      const rawUrl = individualFloorplan ? `floorplans/converted/${individualFloorplan}` : null;
-      return rawUrl ? encodeFloorplanUrl(rawUrl) : null;
-    } else {
-      // For multi-floorplan units, show floor-level floorplan by default
-      if (isTower || isMaryland || isFifthStreet) {
+
+      // If individual exists, use it. Otherwise fallback to floor level.
+      if (individualFloorplan) {
+        const rawUrl = `floorplans/converted/${individualFloorplan}`;
+        return encodeFloorplanUrl(rawUrl);
+      } else {
+        // Fallback if no individual plan exists
         let floorFloorplan = null;
         if (isTower) {
           floorFloorplan = getTowerUnitFloorFloorplan(displayUnit.unit_name);
@@ -82,30 +84,24 @@ export function SuiteDetailsTab() {
         }
         const rawUrl = floorFloorplan ? `floorplans/converted/${floorFloorplan}` : null;
         return rawUrl ? encodeFloorplanUrl(rawUrl) : null;
-      } else {
-        // Fallback to intelligent matching for other units
-        const rawUrl = getIntelligentFloorplanUrl(displayUnit.unit_name, displayUnit);
-        return rawUrl ? encodeFloorplanUrl(rawUrl) : null;
       }
+    } else {
+      // Fallback to intelligent matching for other units
+      const rawUrl = getIntelligentFloorplanUrl(displayUnit.unit_name, displayUnit);
+      return rawUrl ? encodeFloorplanUrl(rawUrl) : null;
     }
   };
 
   const getSecondaryFloorplanUrl = () => {
     try {
-      console.log('🏗️ Computing secondary floorplan for:', displayUnit?.unit_name, 'isTower:', isTower, 'isMaryland:', isMaryland, 'isFifthStreet:', isFifthStreet);
-      
       if (!displayUnit || !displayUnit.unit_name) {
-        console.log('❌ No displayUnit or unit_name for secondary floorplan');
         return null;
       }
-      
-      // For units with multiple floorplans, show the opposite view as secondary
+
+      // For units with multiple floorplans, show the floor-level view as secondary (Bottom Slot)
       if (isTower || isMaryland || isFifthStreet) {
-        console.log('🏢 Multi-floorplan unit detected, current showIndividualFloorplan:', showIndividualFloorplan, 'hasIndividualFloorplan:', hasIndividualFloorplan);
-        
-        if (showIndividualFloorplan && hasIndividualFloorplan) {
-          // If showing individual, secondary is floor-level view
-          console.log('🏗️ Getting floor-level floorplan as secondary');
+        // Only show secondary if we have an individual plan on top
+        if (hasIndividualFloorplan) {
           let floorFloorplan = null;
           if (isTower) {
             floorFloorplan = getTowerUnitFloorFloorplan(displayUnit.unit_name);
@@ -114,33 +110,12 @@ export function SuiteDetailsTab() {
           } else if (isFifthStreet) {
             floorFloorplan = getFifthStreetUnitFloorFloorplan(displayUnit.unit_name);
           }
-          
-          console.log('📄 Floor floorplan result:', floorFloorplan);
+
           const rawUrl = floorFloorplan ? `floorplans/converted/${floorFloorplan}` : null;
-          const encodedUrl = rawUrl ? encodeFloorplanUrl(rawUrl) : null;
-          console.log('🔗 Secondary floor URL:', encodedUrl);
-          return encodedUrl;
-        } else if (hasIndividualFloorplan) {
-          // If showing floor-level, secondary is individual view
-          console.log('🏗️ Getting individual floorplan as secondary');
-          let individualFloorplan = null;
-          if (isTower) {
-            individualFloorplan = getTowerUnitIndividualFloorplan(displayUnit.unit_name);
-          } else if (isMaryland) {
-            individualFloorplan = getMarylandUnitIndividualFloorplan(displayUnit.unit_name);
-          } else if (isFifthStreet) {
-            individualFloorplan = getFifthStreetUnitIndividualFloorplan(displayUnit.unit_name);
-          }
-          
-          console.log('📄 Individual floorplan result:', individualFloorplan);
-          const rawUrl = individualFloorplan ? `floorplans/converted/${individualFloorplan}` : null;
-          const encodedUrl = rawUrl ? encodeFloorplanUrl(rawUrl) : null;
-          console.log('🔗 Secondary individual URL:', encodedUrl);
-          return encodedUrl;
+          return rawUrl ? encodeFloorplanUrl(rawUrl) : null;
         }
       }
-      
-      console.log('❌ No secondary floorplan available for this unit');
+
       return null;
     } catch (error) {
       console.error('❌ Error getting secondary floorplan URL:', error);
@@ -151,10 +126,6 @@ export function SuiteDetailsTab() {
   const currentFloorplanUrl = getFloorplanUrl();
   const secondaryFloorplanUrl = getSecondaryFloorplanUrl();
 
-  const toggleFloorplanView = () => {
-    setShowIndividualFloorplan(prev => !prev);
-  };
-
   const handleFloorPlanClick = () => {
     if (currentFloorplanUrl && displayUnit) {
       openFloorplan(currentFloorplanUrl, displayUnit.unit_name, displayUnit);
@@ -163,7 +134,7 @@ export function SuiteDetailsTab() {
 
   const handleSecondaryFloorPlanClick = () => {
     if (secondaryFloorplanUrl && displayUnit) {
-      const secondaryTitle = (isTower || isMaryland || isFifthStreet) && showIndividualFloorplan 
+      const secondaryTitle = hasIndividualFloorplan
         ? `${displayUnit.unit_name} - Floor Layout`
         : `${displayUnit.unit_name} - Unit Layout`;
       openFloorplan(secondaryFloorplanUrl, secondaryTitle, displayUnit);
@@ -173,7 +144,7 @@ export function SuiteDetailsTab() {
   const handleShareClick = async () => {
     if (!displayUnit) return;
     const shareUrl = `${window.location.origin}${window.location.pathname}?sel=${displayUnit.unit_key}`;
-    
+
     try {
       await navigator.clipboard.writeText(shareUrl);
       setShareUrlCopied(true);
@@ -213,11 +184,10 @@ export function SuiteDetailsTab() {
         <div className="flex items-start justify-between">
           <div>
             <h2 className="text-xl font-bold text-gray-900">{displayUnit.unit_name}</h2>
-            <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium mt-2 ${
-              isAvailable 
-                ? 'bg-green-100 text-green-700' 
-                : 'bg-red-100 text-red-700'
-            }`}>
+            <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium mt-2 ${isAvailable
+              ? 'bg-green-100 text-green-700'
+              : 'bg-red-100 text-red-700'
+              }`}>
               {isAvailable ? 'Available' : 'Occupied'}
             </div>
           </div>
@@ -290,8 +260,8 @@ export function SuiteDetailsTab() {
           <div className="space-y-4">
             <div className="relative group cursor-pointer" onClick={handleFloorPlanClick}>
               <div className="relative rounded-lg overflow-hidden border border-black/10 bg-gray-50">
-                <img 
-                  src={currentFloorplanUrl} 
+                <img
+                  src={currentFloorplanUrl}
                   alt={`${displayUnit.unit_name} Floor Plan Preview`}
                   className="w-full h-48 object-contain"
                 />
@@ -302,15 +272,15 @@ export function SuiteDetailsTab() {
                 </div>
               </div>
               <div className="text-xs text-center text-gray-500 mt-2">
-                {(isTower || isMaryland || isFifthStreet) && showIndividualFloorplan ? 'Unit Layout' : 'Floor Plan'} - Click to expand
+                {hasIndividualFloorplan ? 'Individual Unit Layout' : 'Floor Plan'} - Click to expand
               </div>
             </div>
 
             {secondaryFloorplanUrl && (
               <div className="relative group cursor-pointer" onClick={handleSecondaryFloorPlanClick}>
                 <div className="relative rounded-lg overflow-hidden border border-black/10 bg-gray-50">
-                  <img 
-                    src={secondaryFloorplanUrl} 
+                  <img
+                    src={secondaryFloorplanUrl}
                     alt={`${displayUnit.unit_name} Secondary Floor Plan Preview`}
                     className="w-full h-40 object-contain"
                     onError={(e) => {
@@ -332,7 +302,7 @@ export function SuiteDetailsTab() {
                   </div>
                 </div>
                 <div className="text-xs text-center text-gray-500 mt-2">
-                  {(isTower || isMaryland || isFifthStreet) && showIndividualFloorplan ? 'Full Floor Layout' : 'Individual Unit'} - Click to expand
+                  Full Floor Layout - Click to expand
                 </div>
               </div>
             )}
@@ -363,7 +333,7 @@ export function SuiteDetailsTab() {
             <button
               onClick={async () => {
                 const recipientEmail = 'lacenterstudios3d@gmail.com';
-                
+
                 try {
                   // Load EmailJS if not already loaded
                   if (!window.emailjs) {
@@ -375,7 +345,7 @@ export function SuiteDetailsTab() {
                       script.onerror = reject;
                       setTimeout(reject, 10000);
                     });
-                    window.emailjs.init('7v5wJOSuv1p_PkcU5');
+                    window.emailjs?.init('7v5wJOSuv1p_PkcU5');
                   }
 
                   const templateParams = {
@@ -388,7 +358,7 @@ export function SuiteDetailsTab() {
                     reply_to: 'visitor@website.com'
                   };
 
-                  await window.emailjs.send('service_q47lbr7', 'template_0zeil8m', templateParams);
+                  await window.emailjs?.send('service_q47lbr7', 'template_0zeil8m', templateParams);
                   alert('🎉 Your inquiry has been sent to LA Center Studios! We will contact you soon.');
                 } catch (error) {
                   alert(`Unable to send inquiry. Please contact us directly at lacenterstudios3d@gmail.com`);
