@@ -261,6 +261,30 @@ const GLBInitializer: React.FC = () => {
   return null;
 };
 
+// Error Boundary for individual GLB units
+class GLBErrorBoundary extends React.Component<{ children: React.ReactNode, nodeKey: string }, { hasError: boolean }> {
+  constructor(props: { children: React.ReactNode, nodeKey: string }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: any, errorInfo: any) {
+    console.error(`❌ Error loading GLB unit ${this.props.nodeKey}:`, error);
+    MobileDiagnostics.log('glb-error', `Failed to load ${this.props.nodeKey}`, { error: error.message });
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return null;
+    }
+    return this.props.children;
+  }
+}
+
 export const GLBManager: React.FC = () => {
   const { glbNodes, selectedUnit, selectedBuilding, selectedFloor, hoveredUnit } = useGLBState();
   const { isUnitActive } = useFilterStore();
@@ -283,7 +307,9 @@ export const GLBManager: React.FC = () => {
     <group>
       <GLBInitializer />
       {nodesToRender.map(node => (
-        <GLBUnit key={node.key} node={node} />
+        <GLBErrorBoundary key={node.key} nodeKey={node.key}>
+          <GLBUnit node={node} />
+        </GLBErrorBoundary>
       ))}
     </group>
   );
