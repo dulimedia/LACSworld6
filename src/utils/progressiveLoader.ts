@@ -54,24 +54,29 @@ export class ProgressiveLoader {
 
   // Check if a model should be loaded based on mobile constraints
   shouldLoadModel(modelPath: string): boolean {
-    if (!this.isMobile) {
-      return true; // Desktop can load everything
-    }
+    try {
+      if (!this.isMobile) {
+        return true; // Desktop can load everything
+      }
 
-    const priorities = this.getLoadPriorities();
-    
-    // Always load essential models
-    if (priorities.essential.some(essential => modelPath.includes(essential))) {
-      return true;
-    }
+      const priorities = this.getLoadPriorities();
+      
+      // Always load essential models
+      if (priorities.essential.some(essential => modelPath.includes(essential))) {
+        return true;
+      }
 
-    // Load important models only if not many are already loaded
-    if (priorities.important.some(important => modelPath.includes(important))) {
-      return this.loadedModels.size < 10; // Limit to 10 models on mobile
-    }
+      // Load important models only if not many are already loaded
+      if (priorities.important.some(important => modelPath.includes(important))) {
+        return this.loadedModels.size < 10; // Limit to 10 models on mobile
+      }
 
-    // Only load optional models if very few are loaded and memory is good
-    return this.loadedModels.size < 5 && this.hasGoodMemory();
+      // Only load optional models if very few are loaded and memory is good
+      return this.loadedModels.size < 5 && this.hasGoodMemory();
+    } catch (error) {
+      console.warn('Progressive loader error:', error);
+      return true; // Default to loading if error
+    }
   }
 
   // Check if device has sufficient memory
@@ -121,6 +126,11 @@ export class ProgressiveLoader {
 
 // Utility function to check if a unit should be rendered
 export function shouldRenderUnit(unitPath: string): boolean {
-  const loader = ProgressiveLoader.getInstance();
-  return loader.shouldLoadModel(unitPath);
+  try {
+    const loader = ProgressiveLoader.getInstance();
+    return loader.shouldLoadModel(unitPath);
+  } catch (error) {
+    console.warn('shouldRenderUnit error:', error);
+    return true; // Default to rendering if error
+  }
 }
