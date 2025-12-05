@@ -114,13 +114,13 @@ export const getMobileOptimizedSettings = (device: DeviceCapabilities): MobileRe
     shadows: false, // Very expensive, major GPU memory consumer
     postProcessing: false, // Can cause context loss
     maxLights: 1, // Single light only to minimize shader complexity
-    textureSize: 256, // Even smaller textures - 512px was still too much
+    textureSize: 128, // Ultra-small textures for maximum mobile stability
     modelComplexity: 'low',
     preserveDrawingBuffer: false, // Can cause memory leaks on iOS
     powerPreference: 'low-power', // Prioritize battery/stability over performance
     failIfMajorPerformanceCaveat: false, // Don't fail, just use software rendering if needed
     useSimpleLighting: true, // Use basic ambient + directional, no fancy lighting
-    hdriResolution: 64, // Smallest possible HDRI to prevent context loss
+    hdriResolution: 32, // Extremely small HDRI to prevent context loss
     disableFog: true, // Fog adds shader complexity
     disableBloom: true, // Post-processing effect
     disableSSAO: true // Post-processing effect
@@ -132,13 +132,13 @@ export const getMobileOptimizedSettings = (device: DeviceCapabilities): MobileRe
     return safeModeSettings;
   }
 
-  // Android can handle slightly more
+  // Android can handle slightly more but still conservative
   if (device.isAndroid) {
     return {
       ...safeModeSettings,
-      textureSize: 512,
-      maxLights: 3,
-      hdriResolution: 256
+      textureSize: 128, // Keep same as iOS for consistency
+      maxLights: 2,
+      hdriResolution: 64
     };
   }
 

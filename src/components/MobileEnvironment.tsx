@@ -21,26 +21,26 @@ export const MobileEnvironment: React.FC<MobileEnvironmentProps> = ({
     if (!PerfFlags.isMobile) return null;
 
     const canvas = document.createElement('canvas');
-    canvas.width = 32;  // Tiny texture
-    canvas.height = 32;
+    canvas.width = 16;  // Even tinier texture for ultra-low memory
+    canvas.height = 16;
     const ctx = canvas.getContext('2d');
     
     if (ctx) {
       // Simple sky gradient
-      const gradient = ctx.createLinearGradient(0, 0, 0, 32);
+      const gradient = ctx.createLinearGradient(0, 0, 0, 16);
       gradient.addColorStop(0, '#87CEEB'); // Sky blue
       gradient.addColorStop(0.7, '#98D8E8'); // Light blue
       gradient.addColorStop(1, '#B8E6F0'); // Very light blue
       
       ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, 32, 32);
+      ctx.fillRect(0, 0, 16, 16);
     }
 
     const texture = new THREE.CanvasTexture(canvas);
     texture.mapping = THREE.EquirectangularReflectionMapping;
     texture.flipY = false;
     
-    console.log('🎨 Created ultra-lightweight mobile environment (32x32 gradient)');
+    console.log('🎨 Created ultra-lightweight mobile environment (16x16 gradient)');
     return texture;
   }, []);
 

@@ -85,9 +85,12 @@ export class MobileMemoryManager {
     }
   }
 
-  // Cache texture with memory limit
+  // Cache texture with very strict memory limit for mobile
   cacheTexture(key: string, texture: THREE.Texture) {
-    if (this.textureCache.size < 20) { // Limit cache size
+    const isMobile = /Mobi|Mobile|Android|iPhone|iPad|iPod/.test(navigator.userAgent);
+    const maxCacheSize = isMobile ? 5 : 20; // Much smaller cache on mobile
+    
+    if (this.textureCache.size < maxCacheSize) {
       this.textureCache.set(key, texture);
     } else {
       // If cache is full, dispose and replace oldest
@@ -115,12 +118,17 @@ export class MobileMemoryManager {
 
 // iOS Safari specific optimizations
 export const iOSSafariOptimizations = {
-  // Reduce texture quality for iOS Safari
+  // Ultra-aggressive texture size reduction for mobile
   getOptimizedTextureSize: (originalSize: number): number => {
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isMobile = /Mobi|Mobile|Android|iPhone|iPad|iPod/.test(navigator.userAgent);
+    
     if (isIOS) {
-      // Reduce texture size by 50% on iOS
-      return Math.max(256, Math.floor(originalSize * 0.5));
+      // iOS gets smallest possible textures
+      return Math.max(64, Math.floor(originalSize * 0.125)); // 1/8 size
+    } else if (isMobile) {
+      // Android gets slightly larger but still very small
+      return Math.max(128, Math.floor(originalSize * 0.25)); // 1/4 size
     }
     return originalSize;
   },
