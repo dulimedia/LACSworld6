@@ -1343,8 +1343,8 @@ function App() {
                       <>
                         {/* MOBILE-OPTIMIZED Environment - Prevents context loss on mobile */}
                         <MobileEnvironment
-                          backgroundIntensity={deviceCapabilities.isMobile ? 0.4 : 1.6}
-                          environmentIntensity={deviceCapabilities.isMobile ? 0.3 : 1.2}
+                          backgroundIntensity={deviceCapabilities.isMobile ? 1.0 : 1.6}
+                          environmentIntensity={deviceCapabilities.isMobile ? 0.8 : 1.2}
                         />
 
                         {/* Lighting System - Mobile-safe preset uses simple lighting */}

@@ -31,15 +31,15 @@ const OFFICES_OPTIONS = [
 
 export function ExploreTab() {
   console.log('🚀🚀🚀 EXPLORE TAB RENDERED 🚀🚀🚀');
-  const { 
-    unitsByBuilding, 
-    unitsData, 
-    showAvailableOnly, 
+  const {
+    unitsByBuilding,
+    unitsData,
+    showAvailableOnly,
     setShowAvailableOnly,
     setSelected,
     setHovered
   } = useExploreState();
-  
+
   const { setView } = useSidebarState();
   const { selectUnit } = useGLBState();
   const { setFilter, clearFilter } = useFilterStore();
@@ -77,7 +77,7 @@ export function ExploreTab() {
     // AGGRESSIVE DEBUG LOGGING
     console.log('🔥 FILTER STATE:', { sizeFilter, statusFilter, officesFilter });
     console.log('🔥 UNITS DATA SIZE:', unitsData.size);
-    
+
     // Sample first 10 units to see their office data
     let sampleCount = 0;
     console.log('🔥 SAMPLE UNITS WITH OFFICE DATA:');
@@ -87,31 +87,31 @@ export function ExploreTab() {
         sampleCount++;
       }
     });
-    
+
     const allBuildings = Object.keys(unitsByBuilding).sort();
     const allowedBuildings = ['Fifth Street Building', 'Maryland Building', 'Tower Building'];
     const buildings = allBuildings.filter(b => allowedBuildings.includes(b));
-    
+
     return buildings.map(building => {
       const floors = unitsByBuilding[building];
       let totalSuiteCount = 0;
-      const floorGroups: Array<{floorName: string, units: Array<{unitKey: string, unit: any}>}> = [];
+      const floorGroups: Array<{ floorName: string, units: Array<{ unitKey: string, unit: any }> }> = [];
 
       const buildingSeenUnits = new Set<string>();
-      
+
       const isTowerBuilding = building === 'Tower Building';
-      
+
       if (isTowerBuilding) {
         // Tower Building: display units directly without floor grouping
-        const allTowerUnits: Array<{unitKey: string, unit: any}> = [];
-        
+        const allTowerUnits: Array<{ unitKey: string, unit: any }> = [];
+
         Object.values(floors).forEach(unitKeys => {
           const uniqueKeys = Array.from(new Set(unitKeys));
-          
+
           uniqueKeys.forEach(unitKey => {
             if (buildingSeenUnits.has(unitKey)) return;
             buildingSeenUnits.add(unitKey);
-            
+
             const unit = unitsData.get(unitKey);
             if (!unit) return;
 
@@ -160,7 +160,7 @@ export function ExploreTab() {
               const officeCount = unit.private_offices;
               // Treat undefined/null as 0 offices
               const normalizedCount = officeCount === undefined || officeCount === null ? 0 : officeCount;
-              
+
               let officeMatches = false;
               if (officesFilter === '0') {
                 officeMatches = normalizedCount === 0;
@@ -173,7 +173,7 @@ export function ExploreTab() {
               } else if (officesFilter === '11+') {
                 officeMatches = normalizedCount >= 11;
               }
-              
+
               if (!officeMatches) {
                 console.log(`❌ Office: ${unit.unit_name} (${normalizedCount}) excluded by '${officesFilter}'`);
                 passes = false;
@@ -188,7 +188,7 @@ export function ExploreTab() {
             }
           });
         });
-        
+
         // Sort Tower units numerically (T-100, T-110, T-200, etc.)
         allTowerUnits.sort((a, b) => {
           const getNumber = (unitName: string) => {
@@ -197,7 +197,7 @@ export function ExploreTab() {
           };
           return getNumber(a.unit.unit_name) - getNumber(b.unit.unit_name);
         });
-        
+
         // Add units directly without a floor subfolder
         if (allTowerUnits.length > 0) {
           floorGroups.push({ floorName: '', units: allTowerUnits });
@@ -212,16 +212,16 @@ export function ExploreTab() {
           if (bIndex === -1) return -1;
           return aIndex - bIndex;
         });
-        
+
         sortedFloorEntries.forEach(([floorName, unitKeys]) => {
-          const floorUnits: Array<{unitKey: string, unit: any}> = [];
-          
+          const floorUnits: Array<{ unitKey: string, unit: any }> = [];
+
           const uniqueFloorKeys = Array.from(new Set(unitKeys));
-          
+
           uniqueFloorKeys.forEach(unitKey => {
             if (buildingSeenUnits.has(unitKey)) return;
             buildingSeenUnits.add(unitKey);
-            
+
             const unit = unitsData.get(unitKey);
             if (!unit) return;
 
@@ -270,7 +270,7 @@ export function ExploreTab() {
               const officeCount = unit.private_offices;
               // Treat undefined/null as 0 offices
               const normalizedCount = officeCount === undefined || officeCount === null ? 0 : officeCount;
-              
+
               let officeMatches = false;
               if (officesFilter === '0') {
                 officeMatches = normalizedCount === 0;
@@ -283,7 +283,7 @@ export function ExploreTab() {
               } else if (officesFilter === '11+') {
                 officeMatches = normalizedCount >= 11;
               }
-              
+
               if (!officeMatches) {
                 console.log(`❌ Office: ${unit.unit_name} (${normalizedCount}) excluded by '${officesFilter}'`);
                 passes = false;
@@ -314,9 +314,9 @@ export function ExploreTab() {
 
   useEffect(() => {
     if (groupedByBuilding.length === 0 || initialized) return;
-    
+
     setInitialized(true);
-    
+
     // Set all buildings and floors to expanded by default
     setExpandedBuildings(new Set(groupedByBuilding.map(b => b.name)));
     const allFloors = new Set<string>();
@@ -333,11 +333,11 @@ export function ExploreTab() {
   // Auto-expand all buildings when filters are active
   useEffect(() => {
     const hasActiveFilters = sizeFilter !== 'any' || statusFilter !== 'any' || officesFilter !== 'any';
-    
+
     if (hasActiveFilters && groupedByBuilding.length > 0) {
       // Expand all buildings to show filtered results
       setExpandedBuildings(new Set(groupedByBuilding.map(b => b.name)));
-      
+
       // Expand all floors within those buildings
       const allFloors = new Set<string>();
       groupedByBuilding.forEach(b => {
@@ -361,7 +361,7 @@ export function ExploreTab() {
 
     // Create a list of units that match the current filters
     const filteredUnits: string[] = [];
-    
+
     groupedByBuilding.forEach(building => {
       building.floorGroups.forEach(floor => {
         floor.units.forEach(({ unit }) => {
@@ -435,155 +435,79 @@ export function ExploreTab() {
   }, [sizeFilter, statusFilter, officesFilter, groupedByBuilding, setFilter, clearFilter]);
 
   return (
-    <div className={isMobile ? "space-y-2" : "space-y-4"}>
-      {isMobile ? (
-        <div className="space-y-2">
-          <label className="block">
-            <span className="text-xs font-semibold uppercase tracking-wide text-black/60 mb-1 block">Size</span>
-            <select
-              value={sizeFilter}
-              onChange={(e) => setSizeFilter(e.target.value)}
-              className="w-full text-xs px-2 py-1.5 rounded border border-black/10 bg-white"
-            >
-              {SIZE_OPTIONS.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-          </label>
-          <label className="block">
-            <span className="text-xs font-semibold uppercase tracking-wide text-black/60 mb-1 block">Status</span>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full text-xs px-2 py-1.5 rounded border border-black/10 bg-white"
-            >
-              {STATUS_OPTIONS.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-          </label>
-          <label className="block">
-            <span className="text-xs font-semibold uppercase tracking-wide text-black/60 mb-1 block"># of Offices</span>
-            <select
-              value={officesFilter}
-              onChange={(e) => {
-                console.log('🎯 OFFICE FILTER CHANGED TO:', e.target.value);
-                setOfficesFilter(e.target.value);
-              }}
-              className="w-full text-xs px-2 py-1.5 rounded border border-black/10 bg-white"
-            >
-              {OFFICES_OPTIONS.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-          </label>
-        </div>
-      ) : (
-        <>
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center space-x-2">
-              <Sliders size={14} className="text-gray-500" />
-              <span className="text-xs font-semibold uppercase tracking-wide text-black/60">Filters</span>
-            </div>
-            {filtersVisible && (
-              <button
-                onClick={() => setFiltersVisible(false)}
-                className="text-xs text-gray-500 hover:text-gray-700 flex items-center space-x-1"
-              >
-                <span>Hide</span>
-                <span>✕</span>
-              </button>
-            )}
-            {!filtersVisible && (
-              <button
-                onClick={() => setFiltersVisible(true)}
-                className="text-xs text-blue-500 hover:text-blue-700"
-              >
-                Show Filters
-              </button>
-            )}
+    <div className={isMobile ? "space-y-2 pb-32" : "space-y-4 pb-20"}>
+      <div className="space-y-4 p-3 bg-gray-50 rounded-lg border border-black/10">
+        <div>
+          <div className="flex items-center space-x-2 mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wide text-black/60">Size</span>
           </div>
-
-          {filtersVisible && (
-            <div className="space-y-4 p-3 bg-gray-50 rounded-lg border border-black/10">
-              <div>
-                <div className="flex items-center space-x-2 mb-2">
-                  <span className="text-xs font-semibold uppercase tracking-wide text-black/60">Size</span>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-          {SIZE_OPTIONS.map((option) => {
-            const isActive = sizeFilter === option.value;
-            return (
-              <button
-                key={option.value}
-                onClick={() => setSizeFilter(option.value)}
-                className={`rounded-lg transition-colors ${isMobile ? 'text-sm px-4 py-3 min-h-[44px]' : 'text-xs px-3 py-2'} ${
-                  isActive
+          <div className="grid grid-cols-2 gap-2">
+            {SIZE_OPTIONS.map((option) => {
+              const isActive = sizeFilter === option.value;
+              return (
+                <button
+                  key={option.value}
+                  onClick={() => setSizeFilter(option.value)}
+                  className={`rounded-lg transition-colors ${isMobile ? 'text-sm px-2 py-2 min-h-[36px]' : 'text-xs px-3 py-2'} ${isActive
                     ? 'bg-blue-500 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                {option.label}
-              </button>
-            );
-          })}
+                    }`}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
 
-      <div>
-        <div className="flex items-center space-x-2 mb-2">
-          <Home size={14} className="text-gray-500" />
-          <span className="text-xs font-semibold uppercase tracking-wide text-black/60">Status</span>
-        </div>
-        <div className="grid grid-cols-3 gap-2">
-          {STATUS_OPTIONS.map((option) => {
-            const isActive = statusFilter === option.value;
-            return (
-              <button
-                key={option.value}
-                onClick={() => setStatusFilter(option.value)}
-                className={`rounded-lg transition-colors ${isMobile ? 'text-sm px-4 py-3 min-h-[44px]' : 'text-xs px-3 py-2'} ${
-                  isActive
+        <div>
+          <div className="flex items-center space-x-2 mb-2">
+            <Home size={14} className="text-gray-500" />
+            <span className="text-xs font-semibold uppercase tracking-wide text-black/60">Status</span>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {STATUS_OPTIONS.map((option) => {
+              const isActive = statusFilter === option.value;
+              return (
+                <button
+                  key={option.value}
+                  onClick={() => setStatusFilter(option.value)}
+                  className={`rounded-lg transition-colors ${isMobile ? 'text-sm px-2 py-2 min-h-[36px]' : 'text-xs px-3 py-2'} ${isActive
                     ? 'bg-blue-500 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                {option.label}
-              </button>
-            );
-          })}
+                    }`}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
 
-      <div>
-        <div className="flex items-center space-x-2 mb-2">
-          <Home size={14} className="text-gray-500" />
-          <span className="text-xs font-semibold uppercase tracking-wide text-black/60"># of Offices</span>
-        </div>
-        <div className="grid grid-cols-5 gap-2">
-          {OFFICES_OPTIONS.map((option) => {
-            const isActive = officesFilter === option.value;
-            return (
-              <button
-                key={option.value}
-                onClick={() => setOfficesFilter(option.value)}
-                className={`rounded-lg transition-colors ${isMobile ? 'text-sm px-4 py-3 min-h-[44px]' : 'text-xs px-3 py-2'} ${
-                  isActive
+        <div>
+          <div className="flex items-center space-x-2 mb-2">
+            <Home size={14} className="text-gray-500" />
+            <span className="text-xs font-semibold uppercase tracking-wide text-black/60"># of Offices</span>
+          </div>
+          <div className="grid grid-cols-5 gap-2">
+            {OFFICES_OPTIONS.map((option) => {
+              const isActive = officesFilter === option.value;
+              return (
+                <button
+                  key={option.value}
+                  onClick={() => setOfficesFilter(option.value)}
+                  className={`rounded-lg transition-colors ${isMobile ? 'text-sm px-2 py-2 min-h-[36px]' : 'text-xs px-3 py-2'} ${isActive
                     ? 'bg-blue-500 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                {option.label}
-              </button>
-            );
-          })}
+                    }`}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
-
-            </div>
-          )}
-        </>
-      )}
 
 
       <div className={isMobile ? "mt-2 space-y-1" : "mt-4 space-y-2"}>
@@ -606,21 +530,21 @@ export function ExploreTab() {
                   const floorKey = `${b.name}/${floor.floorName}`;
                   const isFloorExpanded = expandedFloors.has(floorKey);
                   const isTowerBuilding = b.name === 'Tower Building';
-                  
+
                   // For Tower Building, render units directly without floor grouping
                   if (isTowerBuilding) {
                     return (
                       <div key={floor.floorName} className={isMobile ? "px-2 pb-2 space-y-2" : "px-2 pb-1 space-y-1"}>
-                        {floor.units.map(({unitKey, unit}) => (
+                        {floor.units.map(({ unitKey, unit }) => (
                           <button
                             key={unitKey}
-                            className={isMobile 
+                            className={isMobile
                               ? "w-full text-left px-3 py-3 rounded hover:bg-black/5 transition text-sm flex items-center justify-between min-h-[44px] bg-white border border-black/5"
                               : "w-full text-left px-2 py-1.5 rounded hover:bg-black/5 transition text-sm flex items-center justify-between"}
                             onClick={() => {
                               setSelected(unitKey);
                               setView('details');
-                              
+
                               const unitData = unitsData.get(unitKey);
                               if (unitData) {
                                 const normalizedUnit = unitData.unit_name.trim().toUpperCase();
@@ -631,7 +555,7 @@ export function ExploreTab() {
                             onMouseLeave={() => setHovered(null)}
                           >
                             <span className={isMobile ? "font-medium text-sm" : ""}>{unit.unit_name}</span>
-                            <span className={isMobile 
+                            <span className={isMobile
                               ? `text-xs px-2 py-1 rounded ${unit.status ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`
                               : `text-xs px-2 py-0.5 rounded ${unit.status ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                               {unit.status ? 'Available' : 'Occupied'}
@@ -641,7 +565,7 @@ export function ExploreTab() {
                       </div>
                     );
                   }
-                  
+
                   // For other buildings, show floor grouping
                   return (
                     <div key={floor.floorName} className="border border-black/5 rounded bg-white">
@@ -655,19 +579,19 @@ export function ExploreTab() {
                         </div>
                         <span className={isMobile ? "text-xs text-black/40" : "text-xs text-black/40"}>({floor.units.length})</span>
                       </button>
-                      
+
                       {isFloorExpanded && (
                         <div className={isMobile ? "px-2 pb-2 space-y-2" : "px-2 pb-1 space-y-1"}>
-                          {floor.units.map(({unitKey, unit}) => (
+                          {floor.units.map(({ unitKey, unit }) => (
                             <button
                               key={unitKey}
-                              className={isMobile 
+                              className={isMobile
                                 ? "w-full text-left px-3 py-3 rounded hover:bg-black/5 transition text-sm flex items-center justify-between min-h-[44px] bg-white border border-black/5"
                                 : "w-full text-left px-2 py-1.5 rounded hover:bg-black/5 transition text-sm flex items-center justify-between"}
                               onClick={() => {
                                 setSelected(unitKey);
                                 setView('details');
-                                
+
                                 const unitData = unitsData.get(unitKey);
                                 if (unitData) {
                                   selectUnit(unitData.building, unitData.floor, unitData.unit_name);
@@ -677,7 +601,7 @@ export function ExploreTab() {
                               onMouseLeave={() => setHovered(null)}
                             >
                               <span className={isMobile ? "font-medium text-sm" : ""}>{unit.unit_name}</span>
-                              <span className={isMobile 
+                              <span className={isMobile
                                 ? `text-xs px-2 py-1 rounded ${unit.status ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`
                                 : `text-xs px-2 py-0.5 rounded ${unit.status ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                                 {unit.status ? 'Available' : 'Occupied'}

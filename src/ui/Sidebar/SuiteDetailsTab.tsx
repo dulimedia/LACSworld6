@@ -309,24 +309,7 @@ export function SuiteDetailsTab() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 gap-2 pt-2">
-          <button
-            onClick={handleShareClick}
-            className="flex items-center justify-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition text-sm"
-          >
-            {shareUrlCopied ? (
-              <>
-                <CheckCircle size={16} className="text-green-600" />
-                <span>Copied!</span>
-              </>
-            ) : (
-              <>
-                <Share size={16} />
-                <span>Share Suite</span>
-              </>
-            )}
-          </button>
-        </div>
+
 
         {displayUnit.recipients && displayUnit.recipients.length > 0 && (
           <div className="pt-2">

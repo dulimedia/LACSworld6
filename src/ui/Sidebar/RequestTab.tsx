@@ -34,9 +34,9 @@ export function RequestTab() {
 
   useEffect(() => {
     if (buildings.length === 0 || initialized) return;
-    
+
     setInitialized(true);
-    
+
     setExpandedBuildings(new Set(buildings));
     const allFloors = new Set<string>();
     buildings.forEach(building => {
@@ -74,7 +74,7 @@ export function RequestTab() {
     const uniqueKeys = Array.from(new Set(unitKeys));
     const allSelected = uniqueKeys.every(key => selectedSuites.has(key));
     const newSelected = new Set(selectedSuites);
-    
+
     if (allSelected) {
       uniqueKeys.forEach(key => newSelected.delete(key));
     } else {
@@ -95,7 +95,7 @@ export function RequestTab() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const selectedUnits = Array.from(selectedSuites).map(key => {
       const unit = unitsData.get(key);
       return unit?.unit_name || key;
@@ -105,10 +105,10 @@ export function RequestTab() {
     const recipientEmail = 'lacenterstudios3d@gmail.com';
 
     console.log('📧 Starting direct email send to:', recipientEmail);
-    console.log('🔧 Form data:', { 
-      name: formData.name, 
-      email: formData.email, 
-      selectedUnits: selectedUnits.length 
+    console.log('🔧 Form data:', {
+      name: formData.name,
+      email: formData.email,
+      selectedUnits: selectedUnits.length
     });
 
     // Validate required fields
@@ -124,7 +124,7 @@ export function RequestTab() {
 
     try {
       console.log('🔄 Starting EmailJS send process...');
-      
+
       // Load EmailJS if not already loaded
       if (!window.emailjs) {
         console.log('📦 Loading EmailJS library...');
@@ -215,7 +215,7 @@ export function RequestTab() {
   };
 
   return (
-    <form className="space-y-3" onSubmit={handleSubmit}>
+    <form className="space-y-3 pb-32" onSubmit={handleSubmit}>
       <div className="grid grid-cols-1 gap-2">
         <input
           name="name"
@@ -223,7 +223,7 @@ export function RequestTab() {
           placeholder="Your Name *"
           className="w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-black/10"
           value={formData.name}
-          onChange={(e) => setFormData({...formData, name: e.target.value})}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
         />
         <input
           name="email"
@@ -232,14 +232,14 @@ export function RequestTab() {
           placeholder="Your Email *"
           className="w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-black/10"
           value={formData.email}
-          onChange={(e) => setFormData({...formData, email: e.target.value})}
+          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
         />
         <input
           name="phone"
           placeholder="Phone Number"
           className="w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-black/10"
           value={formData.phone}
-          onChange={(e) => setFormData({...formData, phone: e.target.value})}
+          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
         />
       </div>
 
@@ -247,16 +247,16 @@ export function RequestTab() {
         <label className="block text-xs font-semibold uppercase tracking-wide text-black/60 mb-2">
           Select Suites ({selectedSuites.size} suites selected)
         </label>
-        <div className="max-h-64 overflow-y-auto border border-black/10 rounded-lg bg-white space-y-1">
+        <div className="border border-black/10 rounded-lg bg-white space-y-1">
           {buildings.map(building => {
             const floors = unitsByBuilding[building] || {};
             const isExpanded = expandedBuildings.has(building);
-            
+
             const allUnitsInBuilding: string[] = [];
             Object.values(floors).forEach(unitKeys => {
               allUnitsInBuilding.push(...unitKeys);
             });
-            
+
             return (
               <div key={building} className="border-b border-black/5 last:border-0">
                 <button
@@ -270,7 +270,7 @@ export function RequestTab() {
                     <span className="text-sm font-medium">{building}</span>
                   </div>
                 </button>
-                
+
                 {isExpanded && (
                   <div className="px-2 pb-2 space-y-2">
                     {building === 'Tower Building' ? (
@@ -287,7 +287,7 @@ export function RequestTab() {
                         }).map(unitKey => {
                           const unit = unitsData.get(unitKey);
                           if (!unit) return null;
-                          
+
                           return (
                             <label
                               key={unitKey}
@@ -311,7 +311,7 @@ export function RequestTab() {
                         const isFloorExpanded = expandedFloors.has(floorKey);
                         const uniqueUnits = Array.from(new Set(unitKeys));
                         const allFloorSelected = uniqueUnits.length > 0 && uniqueUnits.every(key => selectedSuites.has(key));
-                        
+
                         return (
                           <div key={floorKey} className="border border-black/5 rounded">
                             <div className="flex items-center space-x-2 px-2 py-1 bg-black/[0.02]">
@@ -332,7 +332,7 @@ export function RequestTab() {
                                     className="rounded border-gray-400 w-4 h-4 text-blue-600 focus:ring-blue-500 focus:ring-2 cursor-pointer"
                                   />
                                 </label>
-                                <span 
+                                <span
                                   className="text-xs font-medium cursor-pointer"
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -344,13 +344,13 @@ export function RequestTab() {
                                 <span className="text-xs text-black/40">({uniqueUnits.length})</span>
                               </div>
                             </div>
-                            
+
                             {isFloorExpanded && (
                               <div className="px-4 py-1 space-y-1">
                                 {uniqueUnits.map(unitKey => {
                                   const unit = unitsData.get(unitKey);
                                   if (!unit) return null;
-                                  
+
                                   return (
                                     <label
                                       key={unitKey}
@@ -386,7 +386,7 @@ export function RequestTab() {
         className="w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-black/10"
         rows={3}
         value={formData.message}
-        onChange={(e) => setFormData({...formData, message: e.target.value})}
+        onChange={(e) => setFormData({ ...formData, message: e.target.value })}
       />
 
       <button
