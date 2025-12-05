@@ -60,10 +60,10 @@ const AVAILABLE_FLOORPLANS = [
   'M1Floor_LACS-1.png',
   'M2Floor_LACS-1.png',
   'M3Floor_LACS-1.png',
-  'FG_Floorplan.png',
-  'LACS_F1 Floor Plan_M1_Color_Compressed-1.png',
-  'LACS_F2 Floor Plan_M1_Color_Compressed-1.png',
-  'LACS_F3 Floor Plan_M1_Color_Compressed-1.png'
+  'FG_Full.png',
+  'F1_Full.png',
+  'F2_Full.png',
+  'F3_Full.png'
 ];
 
 // Function to check if unit is a stage or production unit
@@ -537,7 +537,7 @@ export function findFloorplanForUnit(unitName: string, unitData?: any): string |
 
   // Final fallback: First Street Building 1st floor units (F-1xx) use F1_Floorplan.png
   if (buildingPrefix === 'f' && unitNumber && unitNumber.startsWith('1')) {
-    return `floorplans/converted/LACS_F1 Floor Plan_M1_Color_Compressed-1.png`;
+    return `floorplans/converted/F1_Full.png`;
   }
 
   return null;
