@@ -64,7 +64,7 @@ export default function Sidebar() {
 
       <aside
         ref={asideRef}
-        className={cn('sidebar', floorPlanExpanded && 'floorplan-expanded')}
+        className={cn('sidebar flex flex-col', floorPlanExpanded && 'floorplan-expanded')}
         role="complementary"
         aria-label="Suite Controls"
       >
@@ -115,7 +115,7 @@ export default function Sidebar() {
           )}
         </div>
 
-        <div className="flex-1 overflow-hidden relative mt-3">
+        <div className="flex-1 min-h-0 overflow-hidden relative mt-3">
           <div
             className="absolute inset-0 transition-transform duration-300 ease-[cubic-bezier(.2,.8,.2,1)]"
             style={{
