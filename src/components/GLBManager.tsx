@@ -231,10 +231,11 @@ const GLBUnit: React.FC<GLBUnitProps> = React.memo(({ node }) => {
   // Material cleanup handled globally now - don't dispose shared materials per-component
   // Don't dispose useGLTF scenes - they're cached by drei internally
 
-  // Don't render geometry if mobile and shouldn't load, but keep the group for stability
-  if (PerfFlags.isMobile && !canLoadOnMobile && !shouldLoad) {
-    return <group ref={groupRef} visible={false} />;
-  }
+  // DISABLE MOBILE OPTIMIZATION to ensure interactivity
+  // We need all units to be loaded so they can be clicked
+  // if (PerfFlags.isMobile && !canLoadOnMobile && !shouldLoad) {
+  //   return <group ref={groupRef} visible={false} />;
+  // }
 
   return (
     <group ref={groupRef}>
