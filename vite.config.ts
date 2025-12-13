@@ -5,8 +5,8 @@ import react from '@vitejs/plugin-react'
 // Vercel: base = '/' (root)
 // GitHub Pages: base = '/lacsworld5/' (repository name)
 // Local dev: base = '/' (root)
-const base = process.env.VITE_BASE_PATH || 
-             (process.env.VERCEL ? '/' : process.env.NODE_ENV === 'development' ? '/' : '/lacsworld5/')
+const base = process.env.VITE_BASE_PATH ||
+  (process.env.VERCEL ? '/' : process.env.NODE_ENV === 'development' ? '/' : '/LACSworld6/')
 
 export default defineConfig({
   plugins: [react()],
@@ -22,23 +22,24 @@ export default defineConfig({
     strictPort: true,
   },
   build: {
-    target: 'esnext',
-    cssTarget: 'safari14',
-    outDir: 'dist',
-    sourcemap: false,
-    chunkSizeWarningLimit: 1000, // Smaller chunks for mobile
-    assetsInlineLimit: 0,
     rollupOptions: {
-      // Disable tree-shaking for now to prevent empty chunks
-      treeshake: false,
       output: {
-        // Simplified chunk strategy
-        manualChunks: undefined,
-      },
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom'],
+          'three-vendor': ['three', '@react-three/fiber', '@react-three/drei'],
+          'animation-vendor': ['framer-motion'],
+          'utils-vendor': ['clsx', 'tailwind-merge', 'mitt', 'zustand']
+        }
+      }
     },
-    copyPublicDir: true,
+    chunkSizeWarningLimit: 1000,
+    target: 'esnext',
   },
-  publicDir: 'public',
+  esbuild: {
+    supported: {
+      'top-level-await': true
+    },
+  },
   optimizeDeps: {
     esbuildOptions: {
       target: 'esnext',
