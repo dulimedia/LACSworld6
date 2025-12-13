@@ -16,7 +16,7 @@ import Sidebar from './ui/Sidebar/Sidebar';
 import { GLBManager } from './components/GLBManager';
 import { FrustumCuller } from './components/FrustumCuller';
 import { UnitDetailsPopup } from './components/UnitDetailsPopup';
-import { SelectedUnitOverlay } from './components/SelectedUnitOverlay';
+// import { SelectedUnitOverlay } from './components/SelectedUnitOverlay';
 import { UnitGlowHighlight } from './components/UnitGlowHighlight';
 import { UnitGlowHighlightFixed } from './components/UnitGlowHighlightFixed';
 import { TransitionMask } from './components/TransitionMask';
@@ -27,6 +27,7 @@ import UnitRequestForm from './components/UnitRequestForm';
 import { Unit3DPopup } from './components/Unit3DPopup';
 import { Unit3DPopupOverlay } from './components/Unit3DPopupOverlay';
 import { SingleUnitRequestForm } from './components/SingleUnitRequestForm';
+import { ShareFloorplanModal } from './components/ShareFloorplanModal';
 import { FloorplanPopup } from './components/FloorplanPopup';
 import { HoverToast } from './ui/HoverToast';
 import { UnitHoverPreview } from './components/UnitHoverPreview';
@@ -41,7 +42,7 @@ import { Effects } from './components/Effects';
 // Performance-based lighting and effects
 import { AdaptiveLighting } from './components/lighting/AdaptiveLighting';
 import { SoftShadowsController } from './components/lighting/SoftShadowsController';
-import { AtmosphericFog } from './components/environment/AtmosphericFog';
+{/* <AtmosphericFog /> - Disabled per user request ("eliminate god rays") */ }
 import { AdaptiveEffects } from './components/postprocessing/AdaptiveEffects';
 import { MobileEnvironment } from './components/MobileEnvironment';
 import { lazy, Suspense } from 'react';
@@ -63,6 +64,7 @@ import { PerformanceGovernorComponent } from './components/PerformanceGovernorCo
 import { WebGLRecovery } from './components/WebGLRecovery';
 import { WebGLContextRecovery } from './components/WebGLContextRecovery';
 import { log as debugLog, SAFE, Q } from './lib/debug';
+import { UNIT_CAMERA_CONFIG } from './config/cameraConfig';
 import { MobileDiagnostics } from './debug/mobileDiagnostics';
 
 
@@ -107,7 +109,7 @@ function AdaptivePixelRatio() {
   return null;
 }
 
-const CSV_URL = 'https://docs.google.com/spreadsheets/d/1bPbHfT-Tk41NLQ2N4LToUZTDrjXU0ER9Nng5EBsBB58/export?format=csv';
+const CSV_URL = '/unit-data.csv';
 
 // Legacy HDRI Environment component - kept for fallback but not used by default
 const LegacyHDRIEnvironment = React.memo(() => {
@@ -421,7 +423,7 @@ function App() {
   const { floorPlanExpanded, setFloorPlanExpanded } = useSidebarState();
 
   // Flash prevention system - triggers freeze-frame on unit selection
-  const { preventFlash } = useFlashPrevention();
+  // const { preventFlash } = useFlashPrevention();
 
   // Global hover preview state
   const [globalHoverPreview, setGlobalHoverPreview] = useState<{
@@ -622,7 +624,7 @@ function App() {
       antialias: false,
       alpha: false,
       logarithmicDepthBuffer: false,
-      preserveDrawingBuffer: false,
+      preserveDrawingBuffer: true, // FIXED: Prevents white flashing on context loss/frame miss
       stencil: false,
       depth: true,
       premultipliedAlpha: false,
@@ -920,7 +922,11 @@ function App() {
           unit_type: unitData.unit_type || 'Suite', // Copy unit type from CSV data
           private_offices: unitData.private_offices,
           plug_and_play: unitData.plug_and_play,
-          build_to_suit: unitData.build_to_suit
+          build_to_suit: unitData.build_to_suit,
+          is_production_office: unitData.is_production_office,
+          has_kitchen: unitData.has_kitchen,
+          full_floor_floorplan_url: unitData.full_floor_floorplan_url,
+          tour_3d_url: unitData.tour_3d_url
         };
 
         // Store with the primary key
@@ -952,6 +958,18 @@ function App() {
   const handleUnitSelect = useCallback((unitName: string) => {
     setSelectedUnit(unitName);
     setShowFullDetails(false); // Reset full details when selecting a new unit
+
+    // Apply camera config if exists
+    if (unitName && orbitControlsRef.current) {
+      const config = UNIT_CAMERA_CONFIG[unitName.toLowerCase()];
+      if (config) {
+        orbitControlsRef.current.setLookAt(
+          ...config.position,
+          ...config.target,
+          true // Enable transition
+        );
+      }
+    }
   }, []);
 
   const handleDetailsClick = () => {
@@ -1322,11 +1340,15 @@ function App() {
 
               {/* CRITICAL FIX: Wrap canvas in error boundary to catch mobile crashes */}
               {canvasReady && sceneEnabled && (
-                <MobileErrorBoundary>
+                <MobileErrorBoundary
+                  onError={() => {
+                    console.log('🚨 Error Boundary triggered - forcing loading screen off');
+                    setModelsLoading(false);
+                  }}
+                >
                   {console.log('🎬 Rendering RootCanvas - canvasReady:', canvasReady, 'sceneEnabled:', sceneEnabled)}
                   <RootCanvas
                     shadows={mobileSettings.shadows}
-                    dpr={mobileSettings.pixelRatio}
                     camera={{ position: [-10, 10, -14], fov: 45, near: 0.5, far: 2000 }}
                     style={{
                       width: '100%',
@@ -1381,11 +1403,10 @@ function App() {
                         {/* Shadow Debug Helper */}
                         <ShadowHelper enabled={debugState.showShadowHelper} />
 
-                        {/* Fog - Disabled on mobile per safe-mode preset */}
+                        {/* Fog - Lightweight Volumetric Fog (replaces God Rays) */}
                         {!mobileSettings.disableFog && (
                           <>
-                            {tier.startsWith('desktop') && <fogExp2 attach="fog" args={['#b8d0e8', 0.004]} />}
-                            <AtmosphericFog />
+                            <fogExp2 attach="fog" args={['#d0e0f0', 0.0025]} />
                           </>
                         )}
 
@@ -1413,7 +1434,7 @@ function App() {
                         {/* Canvas Resize Handler for smooth sidebar transitions */}
                         <CanvasResizeHandler />
 
-                        {/* God Rays Effect - DISABLED for testing new environment mesh */}
+                        {/* God Rays Effect - REMOVED per user request (bandwidth/performance) */}
                         {/* {effectsReady && <GodRays />} */}
 
                         {/* Enhanced Camera Controls with proper object framing */}
@@ -1469,7 +1490,8 @@ function App() {
                   </RootCanvas>
 
                   {/* Flash Prevention System - OUTSIDE Canvas but overlays entire screen */}
-                  {/* TEMPORARILY DISABLED: FlashKiller was showing black screen freeze-frame */}
+                  {/* Enabled: FlashKiller freezes frame during heavy state changes to prevent white flashes */}
+                  {/* Flash Prevention System - DISABLED to fix black screen freeze issues
                   {/* <FlashKiller isActive={preventFlash} duration={400} /> */}
 
                   {/* Transition Mask - DISABLED: Was causing black flash when clicking units */}
@@ -1592,24 +1614,6 @@ function App() {
               />
             )}
 
-            {/* Request Form */}
-            <UnitRequestForm
-              isOpen={showRequestForm}
-              onClose={() => setShowRequestForm(false)}
-            />
-
-            {/* Single Unit Request Form */}
-            {singleUnitRequestOpen && requestUnitData && (
-              <SingleUnitRequestForm
-                isOpen={singleUnitRequestOpen}
-                onClose={() => {
-                  setSingleUnitRequestOpen(false);
-                }}
-                unitKey={requestUnitData.unitKey}
-                unitName={requestUnitData.unitName}
-              />
-            )}
-
             {/* Shadow Debug UI - DISABLED (using RealisticSun instead) */}
 
             {/* Floorplan Popup */}
@@ -1620,6 +1624,9 @@ function App() {
               unitName={floorplanPopupData?.unitName || ''}
               unitData={floorplanPopupData?.unitData}
             />
+
+            {/* Share Floorplan Modal */}
+            <ShareFloorplanModal />
 
             {/* Debug info removed */}
 

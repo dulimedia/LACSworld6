@@ -16,11 +16,23 @@ export interface UnitData {
   area_sqft?: number; // Square footage
   status: boolean; // Availability status as boolean
   unit_type: string; // Suite, Stage, etc.
-  kitchen_size?: string; // Kitchen size
+  kitchen_size?: string; // Kitchen size (Legacy display string)
   height?: string; // Max height for stages and other units
   private_offices?: number; // Number of individual closed-door offices
-  plug_and_play?: boolean; // Is unit plug and play ready?
-  build_to_suit?: boolean; // Is unit build to suit?
+
+  // New Normalized Fields
+  is_production_office?: boolean; // Combined Plug & Play / Build to Suit
+  has_kitchen?: boolean; // Normalized kitchen status
+  amenities?: string; // Amenities string
+
+  // URLs
+  floorplan_url?: string; // Primary suite floorplan (was floorPlanUrl)
+  full_floor_floorplan_url?: string; // Secondary full floor floorplan
+  tour_3d_url?: string; // Matterport/3D tour URL
+
+  // Legacy fields (optional/deprecated)
+  plug_and_play?: boolean;
+  build_to_suit?: boolean;
 }
 
 export interface LoadedModel {

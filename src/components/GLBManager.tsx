@@ -3,17 +3,17 @@
  * Do not change ids/schema without updating docs.
  */
 import React, { useEffect, useRef, useMemo, useLayoutEffect } from 'react';
-import { useGLTF } from '@react-three/drei';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useLoader, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { configureGLTFLoader } from '../three/loaders';
+import { postprocessLoadedScene } from '../three/pipeline/postprocessLoadedScene';
 import { useGLBState, type GLBNodeInfo } from '../store/glbState';
-import { useExploreState } from '../store/exploreState';
 import { useFilterStore } from '../stores/useFilterStore';
 import { SELECTED_MATERIAL_CONFIG, HOVERED_MATERIAL_CONFIG, FILTER_HIGHLIGHT_CONFIG } from '../config/ghostMaterialConfig';
 import { logger } from '../utils/logger';
-import { PerfFlags } from '../perf/PerfFlags';
 import { MobileDiagnostics } from '../debug/mobileDiagnostics';
-import { ProgressiveLoader, shouldRenderUnit } from '../utils/progressiveLoader';
+import { ProgressiveLoader } from '../utils/progressiveLoader';
 
 interface GLBUnitProps {
   node: GLBNodeInfo;
@@ -77,9 +77,8 @@ const getSharedFilteredMaterial = (): THREE.MeshStandardMaterial => {
   return sharedMaterialsCache.filtered;
 };
 
-const GLBUnit: React.FC<GLBUnitProps> = React.memo(({ node }) => {
+const GLBUnitInner: React.FC<GLBUnitProps> = React.memo(({ node }) => {
   const { selectedUnit, selectedBuilding, selectedFloor, hoveredUnit } = useGLBState();
-  const { selectedUnitKey, hoveredUnitKey } = useExploreState();
   const { isUnitActive } = useFilterStore();
 
   const isHovered = hoveredUnit === node.key && !selectedUnit;
@@ -88,22 +87,23 @@ const GLBUnit: React.FC<GLBUnitProps> = React.memo(({ node }) => {
     selectedFloor === node.floor;
   const isFiltered = isUnitActive(node.key) && !isSelected && !isHovered;
 
-  // MOBILE OPTIMIZATION: Only load models that pass progressive loading check
-  const shouldLoadBase = isSelected || isHovered || isFiltered;
-  const canLoadOnMobile = shouldRenderUnit(node.path);
-  const shouldLoad = shouldLoadBase && (PerfFlags.isMobile ? canLoadOnMobile : true);
+  // Load the model - this will suspend if not loaded
+  const { gl } = useThree();
+  const { scene } = useLoader(GLTFLoader, node.path, (loader) => configureGLTFLoader(loader, gl));
 
-  // MOBILE FIX: useGLTF has internal caching - don't dispose the scene
-  // The leak was from repeatedly creating/unmounting components
-  const { scene } = useGLTF(node.path);
+  // NEW: Refactored hygiene pass
+  useMemo(() => {
+    // FIXED: Do not center units! They must stay in world coordinates for camera focus.
+    if (scene) postprocessLoadedScene(scene, { center: false });
+  }, [scene]);
 
   // Register with progressive loader when model loads
   useEffect(() => {
-    if (scene && shouldLoad) {
+    if (scene) {
       const loader = ProgressiveLoader.getInstance();
       loader.registerLoaded(node.path);
     }
-  }, [scene, shouldLoad, node.path]);
+  }, [scene, node.path]);
 
   const groupRef = useRef<THREE.Group>(null);
   const originalMaterialsRef = useRef<Map<string, THREE.Material | THREE.Material[]>>(new Map());
@@ -133,8 +133,7 @@ const GLBUnit: React.FC<GLBUnitProps> = React.memo(({ node }) => {
     }
   }, [scene, node.key]);
 
-  const { selectUnit, updateGLBObject } = useGLBState();
-  const { setSelected } = useExploreState();
+  const { updateGLBObject } = useGLBState();
 
   useEffect(() => {
     if (groupRef.current) {
@@ -144,9 +143,12 @@ const GLBUnit: React.FC<GLBUnitProps> = React.memo(({ node }) => {
   }, [node.key, updateGLBObject]);
 
   useEffect(() => {
+    // DISABLED: Double material fix - rely on UnitGlowHighlightFixed for selection glow
+    /* 
     if (isSelected) {
       targetStateRef.current = 'selected';
-    } else if (isHovered) {
+    } else */
+    if (isHovered) {
       targetStateRef.current = 'hovered';
     } else if (isFiltered) {
       targetStateRef.current = 'filtered';
@@ -155,14 +157,31 @@ const GLBUnit: React.FC<GLBUnitProps> = React.memo(({ node }) => {
     }
   }, [isSelected, isHovered, isFiltered]);
 
+  // Clean up materials when component unmounts to prevent "dirty" GLTF cache
+  useEffect(() => {
+    return () => {
+      if (groupRef.current) {
+        groupRef.current.traverse((child) => {
+          if (child instanceof THREE.Mesh) {
+            const originalMaterial = originalMaterialsRef.current.get(child.uuid);
+            if (originalMaterial) {
+              child.material = originalMaterial;
+              delete (child.material as any).__isAnimatedMaterial;
+            }
+          }
+        });
+      }
+    };
+  }, []);
+
   useFrame((state, delta) => {
-    if (!groupRef.current || !shouldLoad) return;
+    if (!groupRef.current) return;
 
     const targetProgress = targetStateRef.current !== 'none' ? 1 : 0;
     const fadeSpeed = 1 / FADE_DURATION;
 
     // ATOMIC FRAME SYNC: Set visibility before fade calculations to prevent flash gap
-    groupRef.current.visible = targetProgress > 0;
+    groupRef.current.visible = targetProgress > 0 || fadeProgressRef.current > 0;
 
     if (fadeProgressRef.current !== targetProgress) {
       if (fadeProgressRef.current < targetProgress) {
@@ -222,26 +241,51 @@ const GLBUnit: React.FC<GLBUnitProps> = React.memo(({ node }) => {
         } else if (fadeProgressRef.current === 0 && originalMaterial) {
           child.material = originalMaterial;
           delete (child.material as any).__isAnimatedMaterial;
-          child.visible = true;
+          // child.visible = true; // Handled by group visibility
         }
       }
     });
   });
-
-  // Material cleanup handled globally now - don't dispose shared materials per-component
-  // Don't dispose useGLTF scenes - they're cached by drei internally
-
-  // DISABLE MOBILE OPTIMIZATION to ensure interactivity
-  // We need all units to be loaded so they can be clicked
-  // if (PerfFlags.isMobile && !canLoadOnMobile && !shouldLoad) {
-  //   return <group ref={groupRef} visible={false} />;
-  // }
 
   return (
     <group ref={groupRef}>
       <primitive object={scene} />
     </group>
   );
+});
+
+// Wrapper component to handle Lazy Loading and Delayed Unmount
+const GLBUnit: React.FC<GLBUnitProps> = React.memo(({ node }) => {
+  const { selectedUnit, selectedBuilding, selectedFloor, hoveredUnit } = useGLBState();
+  const { isUnitActive } = useFilterStore();
+
+  const isHovered = hoveredUnit === node.key && !selectedUnit;
+  const isSelected = selectedUnit === node.unitName &&
+    selectedBuilding === node.building &&
+    selectedFloor === node.floor;
+  const isFiltered = isUnitActive(node.key) && !isSelected && !isHovered;
+
+  const isActive = isSelected || isHovered || isFiltered;
+  const [shouldRender, setShouldRender] = React.useState(isActive);
+
+  useEffect(() => {
+    if (isActive) {
+      setShouldRender(true);
+    } else {
+      // Delay unmount to allow fade-out animation to complete
+      // FADE_DURATION is 0.8s, so we wait 1s to be safe
+      const timeout = setTimeout(() => {
+        setShouldRender(false);
+      }, (FADE_DURATION * 1000) + 200);
+      return () => clearTimeout(timeout);
+    }
+  }, [isActive]);
+
+  if (!shouldRender) {
+    return null;
+  }
+
+  return <GLBUnitInner node={node} />;
 });
 
 const GLBInitializer: React.FC = () => {
@@ -287,22 +331,14 @@ class GLBErrorBoundary extends React.Component<{ children: React.ReactNode, node
 }
 
 export const GLBManager: React.FC = () => {
-  const { glbNodes, selectedUnit, selectedBuilding, selectedFloor, hoveredUnit } = useGLBState();
-  const { isUnitActive } = useFilterStore();
+  const { glbNodes } = useGLBState();
 
-  const isMobile = PerfFlags.isMobile;
-
-  // Load all valid units to ensure interactivity
+  // Render all nodes, but GLBUnit wrapper will handle lazy loading
   const nodesToRender = useMemo(() => {
     const allNodes = Array.from(glbNodes.values());
-
-    console.log(`📦 Loading ${allNodes.length} units (mobile: ${isMobile})`);
-    MobileDiagnostics.log('glb-manager', 'Loading GLB units', {
-      total: allNodes.length,
-      isMobile,
-    });
+    console.log(`📦 GLBManager: Registered ${allNodes.length} units (Lazy Loading Enabled)`);
     return allNodes;
-  }, [glbNodes, isMobile]);
+  }, [glbNodes]);
 
   return (
     <group>

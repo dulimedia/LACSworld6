@@ -70,7 +70,7 @@ export function RequestTab() {
     setExpandedFloors(newExpanded);
   };
 
-  const toggleAllInFloor = (building: string, floor: string, unitKeys: string[]) => {
+  const toggleAllInFloor = (_building: string, _floor: string, unitKeys: string[]) => {
     const uniqueKeys = Array.from(new Set(unitKeys));
     const allSelected = uniqueKeys.every(key => selectedSuites.has(key));
     const newSelected = new Set(selectedSuites);
@@ -105,11 +105,6 @@ export function RequestTab() {
     const recipientEmail = 'lacenterstudios3d@gmail.com';
 
     console.log('📧 Starting direct email send to:', recipientEmail);
-    console.log('🔧 Form data:', {
-      name: formData.name,
-      email: formData.email,
-      selectedUnits: selectedUnits.length
-    });
 
     // Validate required fields
     if (!formData.name || !formData.email) {
@@ -131,7 +126,7 @@ export function RequestTab() {
         const script = document.createElement('script');
         script.src = 'https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js';
         document.head.appendChild(script);
-        await new Promise((resolve, reject) => {
+        await new Promise<void>((resolve, reject) => {
           script.onload = () => {
             console.log('✅ EmailJS script loaded successfully');
             resolve();
@@ -148,7 +143,7 @@ export function RequestTab() {
 
         // Initialize EmailJS with your public key
         console.log('🔧 Initializing EmailJS with public key...');
-        window.emailjs.init('7v5wJOSuv1p_PkcU5');
+        window.emailjs?.init('7v5wJOSuv1p_PkcU5');
         console.log('✅ EmailJS initialized with key: 7v5wJOSuv1p_PkcU5');
       } else {
         console.log('✅ EmailJS already loaded and available');
@@ -165,22 +160,18 @@ export function RequestTab() {
         reply_to: formData.email
       };
 
-      console.log('📧 Attempting to send email with:');
-      console.log('  Service ID: service_q47lbr7');
-      console.log('  Template ID: template_0zeil8m');
-      console.log('  Recipient:', recipientEmail);
-      console.log('  Template params:', templateParams);
-
       // Send email using EmailJS
       console.log('📤 Calling EmailJS send...');
-      const response = await window.emailjs.send(
-        'service_q47lbr7', // Your service ID
-        'template_0zeil8m', // Your template ID
-        templateParams
-      );
-
-      console.log('✅ Email sent successfully via EmailJS!');
-      console.log('📊 Response details:', response);
+      if (window.emailjs) {
+        const response = await window.emailjs.send(
+          'service_q47lbr7', // Your service ID
+          'template_0zeil8m', // Your template ID
+          templateParams
+        );
+        console.log('✅ Email sent successfully via EmailJS!', response);
+      } else {
+        throw new Error('EmailJS not available');
+      }
 
       // Success feedback
       alert('🎉 Your request has been sent directly to LA Center Studios! We will contact you soon.');
@@ -189,27 +180,22 @@ export function RequestTab() {
       setFormData({ name: '', email: '', phone: '', message: '' });
       setSelectedSuites(new Set());
 
-    } catch (error) {
-      console.error('❌ Direct email sending failed:');
-      console.error('Error object:', error);
-      console.error('Error type:', typeof error);
-      console.error('Error keys:', Object.keys(error));
-      if (error.text) console.error('Error text:', error.text);
-      if (error.status) console.error('Error status:', error.status);
-      if (error.message) console.error('Error message:', error.message);
+    } catch (err: unknown) {
+      const error = err as any;
+      console.error('❌ Direct email sending failed:', error);
 
-      // More user-friendly error handling
-      if (error.message && error.message.includes('fill in all required fields')) {
-        alert(error.message);
-      } else if (error.text === 'The user ID is invalid') {
+      const errorMessage = error?.message || error?.text || 'Unknown error';
+
+      if (errorMessage.includes('fill in all required fields')) {
+        alert(errorMessage);
+      } else if (error?.text === 'The user ID is invalid') {
         alert('EmailJS configuration error: Invalid user ID. Please contact us directly at lacenterstudios3d@gmail.com');
-      } else if (error.status === 400) {
+      } else if (error?.status === 400) {
         alert('EmailJS error: Bad request. Please contact us directly at lacenterstudios3d@gmail.com');
-      } else if (error.status === 401) {
+      } else if (error?.status === 401) {
         alert('EmailJS error: Unauthorized. Please contact us directly at lacenterstudios3d@gmail.com');
       } else {
-        const errorMsg = error.text || error.message || 'Unknown error';
-        alert(`Unable to send email directly. Please contact us at lacenterstudios3d@gmail.com\n\nTechnical error: ${errorMsg}`);
+        alert(`Unable to send email directly. Please contact us at lacenterstudios3d@gmail.com\n\nTechnical error: ${errorMessage}`);
       }
     }
   };
@@ -274,8 +260,8 @@ export function RequestTab() {
                 {isExpanded && (
                   <div className="px-2 pb-2 space-y-2">
                     {building === 'Tower Building' ? (
-                      // Tower Building: render units directly without floor grouping
-                      <div className="px-2 py-1 space-y-1">
+                      // Tower Building: render units directly without floor grouping, using a 3-column grid
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-1 px-2 py-1">
                         {Array.from(new Set(Object.values(floors).flat())).sort((a, b) => {
                           const getNumber = (key: string) => {
                             const unit = unitsData.get(key);
@@ -291,15 +277,15 @@ export function RequestTab() {
                           return (
                             <label
                               key={unitKey}
-                              className="flex items-center space-x-2 px-2 py-1 hover:bg-black/5 rounded cursor-pointer"
+                              className="flex items-center space-x-2 px-2 py-1.5 hover:bg-black/5 rounded cursor-pointer border border-transparent hover:border-black/5"
                             >
                               <input
                                 type="checkbox"
                                 checked={selectedSuites.has(unitKey)}
                                 onChange={() => toggleSuite(unitKey)}
-                                className="rounded border-gray-400 w-5 h-5 text-blue-600 focus:ring-blue-500 focus:ring-2 cursor-pointer"
+                                className="rounded border-gray-400 w-4 h-4 text-blue-600 focus:ring-blue-500 focus:ring-2 cursor-pointer"
                               />
-                              <span className="text-sm">{unit.unit_name}</span>
+                              <span className="text-sm truncate" title={unit.unit_name}>{unit.unit_name}</span>
                             </label>
                           );
                         })}
@@ -346,7 +332,7 @@ export function RequestTab() {
                             </div>
 
                             {isFloorExpanded && (
-                              <div className="px-4 py-1 space-y-1">
+                              <div className="grid grid-cols-2 gap-1 px-2 py-1">
                                 {uniqueUnits.map(unitKey => {
                                   const unit = unitsData.get(unitKey);
                                   if (!unit) return null;
@@ -354,15 +340,15 @@ export function RequestTab() {
                                   return (
                                     <label
                                       key={unitKey}
-                                      className="flex items-center space-x-2 px-2 py-1 hover:bg-black/5 rounded cursor-pointer"
+                                      className="flex items-center space-x-2 px-2 py-1.5 hover:bg-black/5 rounded cursor-pointer border border-transparent hover:border-black/5"
                                     >
                                       <input
                                         type="checkbox"
                                         checked={selectedSuites.has(unitKey)}
                                         onChange={() => toggleSuite(unitKey)}
-                                        className="rounded border-gray-400 w-5 h-5 text-blue-600 focus:ring-blue-500 focus:ring-2 cursor-pointer"
+                                        className="rounded border-gray-400 w-4 h-4 text-blue-600 focus:ring-blue-500 focus:ring-2 cursor-pointer"
                                       />
-                                      <span className="text-sm">{unit.unit_name}</span>
+                                      <span className="text-sm truncate" title={unit.unit_name}>{unit.unit_name}</span>
                                     </label>
                                   );
                                 })}

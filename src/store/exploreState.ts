@@ -71,8 +71,12 @@ export interface UnitRecord {
   kitchen_size?: string; // Kitchen size from CSV (Full, Compact, Kitchenette, None)
   unit_type?: string;   // Unit type from CSV (Suite, Event Space, Other, Parking, etc.)
   private_offices?: number;
-  plug_and_play?: boolean;
-  build_to_suit?: boolean;
+  plug_and_play?: boolean;     // @deprecated use is_production_office
+  build_to_suit?: boolean;     // @deprecated use is_production_office
+  is_production_office?: boolean;
+  has_kitchen?: boolean;
+  full_floor_floorplan_url?: string;
+  tour_3d_url?: string;
 }
 
 export interface ExploreState {
@@ -85,6 +89,15 @@ export interface ExploreState {
   show3DPopup: boolean;
   singleUnitRequestOpen: boolean;
   requestUnitData: { unitKey: string; unitName: string } | null;
+
+  // Share Modal State
+  shareModalOpen: boolean;
+  shareModalData: {
+    unitKey: string;
+    unitName: string;
+    floorplanUrl?: string;
+    fullFloorUrl?: string;
+  } | null;
 
   // Hierarchical structure: building → floor → unit_keys
   unitsByBuilding: Record<string, Record<string, string[]>>;
@@ -103,6 +116,7 @@ export interface ExploreState {
   setUnitDetailsOpen: (open: boolean) => void;
   setShow3DPopup: (open: boolean) => void;
   setSingleUnitRequestOpen: (open: boolean, unitData?: { unitKey: string; unitName: string }) => void;
+  setShareModalOpen: (open: boolean, data?: ExploreState['shareModalData']) => void;
   setUnitsIndex: (index: ExploreState['unitsByBuilding']) => void;
   setUnitsData: (data: Map<string, UnitRecord>) => void;
   setLoadingUnits: (loading: boolean) => void;
@@ -128,6 +142,9 @@ export const useExploreState = create<ExploreState>((set, get) => ({
   unitsByBuilding: {},
   unitsData: new Map(),
   isLoadingUnits: false,
+
+  shareModalOpen: false,
+  shareModalData: null,
 
   // Actions
   setShowAvailableOnly: (show: boolean) => {
@@ -217,6 +234,13 @@ export const useExploreState = create<ExploreState>((set, get) => ({
     set({
       singleUnitRequestOpen: open,
       requestUnitData: unitData || (open ? get().requestUnitData : null)
+    });
+  },
+
+  setShareModalOpen: (open: boolean, data?: ExploreState['shareModalData']) => {
+    set({
+      shareModalOpen: open,
+      shareModalData: data || (open ? get().shareModalData : null)
     });
   },
 

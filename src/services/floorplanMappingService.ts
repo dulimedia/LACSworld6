@@ -14,7 +14,7 @@ const AVAILABLE_FLOORPLANS = [
   // Site map for stages and production areas
   'LACS_Site Map_M1_Color_page_1.png',
   // First Street Building floorplans
-  'FGFloor_LACS_page_1.png',
+  // First Street Building floorplans
   'F1_Floorplan.png',
   'F1Floor_LACS_page_1.png',
   'F2Floor_LACS_page_1.png',

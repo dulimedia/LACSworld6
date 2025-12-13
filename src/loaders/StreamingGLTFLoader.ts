@@ -1,8 +1,8 @@
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
-import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { isLowMemoryDevice } from '../runtime/mobileProfile';
+import { createGLTFLoader } from '../three/loaders';
+import { postprocessLoadedScene } from '../three/pipeline/postprocessLoadedScene';
 
 export interface LoadProgress {
   loaded: number;
@@ -32,27 +32,16 @@ export class StreamingGLTFLoader {
     this.config = config;
     this.maxConcurrent = config.maxConcurrent ?? (isLowMemoryDevice() ? 2 : 4);
     this.delayBetweenLoads = config.delayBetweenLoads ?? (isLowMemoryDevice() ? 250 : 100);
-    
-    this.loader = new GLTFLoader();
-    
-    const dracoLoader = new DRACOLoader();
-    dracoLoader.setDecoderPath('/draco/');
-    this.loader.setDRACOLoader(dracoLoader);
-    
-    if (config.renderer) {
-      const ktx2Loader = new KTX2Loader();
-      ktx2Loader.setTranscoderPath('/basis/');
-      ktx2Loader.detectSupport(config.renderer);
-      this.loader.setKTX2Loader(ktx2Loader);
-    }
-    
+
+    this.loader = createGLTFLoader(config.renderer);
+
     console.log(`📦 StreamingGLTFLoader initialized (maxConcurrent: ${this.maxConcurrent}, delay: ${this.delayBetweenLoads}ms)`);
   }
 
   loadModels(urls: string[]): Promise<void> {
     this.queue = [...urls];
     console.log(`📦 Queued ${urls.length} models for streaming load`);
-    
+
     return new Promise((resolve) => {
       const checkComplete = () => {
         if (this.queue.length === 0 && this.inFlight === 0) {
@@ -60,16 +49,16 @@ export class StreamingGLTFLoader {
           resolve();
         }
       };
-      
+
       const processNext = () => {
         if (this.inFlight >= this.maxConcurrent || this.queue.length === 0) {
           checkComplete();
           return;
         }
-        
+
         this.inFlight++;
         const url = this.queue.shift()!;
-        
+
         // Check memory before loading on mobile
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
         if (isMobile && (window.performance as any).memory) {
@@ -82,17 +71,20 @@ export class StreamingGLTFLoader {
             return;
           }
         }
-        
+
         this.loader.load(
           url,
           (gltf) => {
             this.loadedModels.add(url);
             this.inFlight--;
-            
+
+            // NEW: Apply hygiene pass immediately
+            postprocessLoadedScene(gltf.scene);
+
             if (this.config.onModelLoaded) {
               this.config.onModelLoaded(url, gltf);
             }
-            
+
             setTimeout(() => processNext(), this.delayBetweenLoads);
           },
           (progress) => {
@@ -107,20 +99,20 @@ export class StreamingGLTFLoader {
           (error) => {
             console.warn(`❌ Failed to load model: ${url}`, error);
             this.inFlight--;
-            
+
             if (this.config.onError) {
               this.config.onError(url, error);
             }
-            
+
             setTimeout(() => processNext(), this.delayBetweenLoads);
           }
         );
-        
+
         if (this.inFlight < this.maxConcurrent && this.queue.length > 0) {
           setTimeout(() => processNext(), 50);
         }
       };
-      
+
       for (let i = 0; i < this.maxConcurrent && i < urls.length; i++) {
         processNext();
       }
@@ -136,7 +128,7 @@ export class StreamingGLTFLoader {
         throw new Error(`Memory usage too high (${(memoryUsage * 100).toFixed(1)}%) to load: ${url}`);
       }
     }
-    
+
     return new Promise((resolve, reject) => {
       this.loader.load(
         url,

@@ -1,15 +1,16 @@
-import { useGLTF } from '@react-three/drei';
+import { useLoader, useThree } from '@react-three/fiber';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { configureGLTFLoader } from '../three/loaders';
 import { useMemo, useEffect } from 'react';
-import { useProgressiveEnvLoader, ENV_MODELS } from '../hooks/useProgressiveEnvLoader';
+import { useProgressiveEnvLoader } from '../hooks/useProgressiveEnvLoader';
 import { assetUrl } from '../lib/assets';
 import { logSafari } from '../debug/safariLogger';
 import * as THREE from 'three';
 import { makeFacesBehave } from '../utils/makeFacesBehave';
 
-const DRACO_DECODER_CDN = 'https://www.gstatic.com/draco/versioned/decoders/1.5.6/';
-
 function useDracoGLTF(path: string) {
-  return useGLTF(path, DRACO_DECODER_CDN);
+  const { gl } = useThree();
+  return useLoader(GLTFLoader, path, (loader) => configureGLTFLoader(loader, gl));
 }
 
 export function ProgressiveEnvironmentMesh() {
@@ -36,7 +37,7 @@ export function ProgressiveEnvironmentMesh() {
         const mesh = child as THREE.Mesh;
         mesh.castShadow = false;
         mesh.receiveShadow = false;
-        
+
         if (mesh.material) {
           const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
           materials.forEach((mat: any) => {

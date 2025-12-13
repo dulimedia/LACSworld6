@@ -65,7 +65,9 @@
   width: var(--sidebar-w);
   padding: var(--sidebar-pad);
   z-index: var(--ui-z);
-  overflow: auto;
+  overflow: hidden; /* FIX: Prevent double scroll (inner div handles scrolling) */
+  display: flex;
+  flex-direction: column;
   -webkit-overflow-scrolling: touch;
   background: rgba(255, 255, 255, 0.75);
   backdrop-filter: blur(12px);

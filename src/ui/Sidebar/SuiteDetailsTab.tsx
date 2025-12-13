@@ -9,7 +9,8 @@ import {
   Share,
   CheckCircle,
   Maximize2,
-  ArrowUp
+  ArrowUp,
+  Download
 } from 'lucide-react';
 import {
   isTowerUnit, getTowerUnitIndividualFloorplan, getTowerUnitFloorFloorplan,
@@ -29,138 +30,272 @@ declare global {
   }
 }
 
+// Helper component to render PDF or Image floorplan
+function FloorplanPreview({ url, title, label, onShare }: { url: string, title: string, label: string, onShare: () => void }) {
+  const isPdf = url.toLowerCase().endsWith('.pdf');
+
+  const handleOpen = () => {
+    window.open(url, '_blank');
+  };
+
+  if (isPdf) {
+    return (
+      <div className="space-y-2">
+        <div className="relative rounded-lg overflow-hidden border border-black/10 bg-gray-50 aspect-video group-hover:shadow-md transition-all">
+          {/* Use Object for PDF embedding as it is often more reliable than embed for this use case */}
+          <object data={`${url}#view=FitH&toolbar=0&navpanes=0&scrollbar=0`} type="application/pdf" className="w-full h-full cursor-pointer pointer-events-none">
+            {/* Fallback to icon if PDF fails to load in object */}
+            <div className="w-full h-full flex flex-col items-center justify-center bg-red-50 text-red-500">
+              <FileText size={48} />
+              <p className="text-xs font-medium mt-2">Preview Unavailable</p>
+            </div>
+          </object>
+
+          {/* Overlay to allow clicking the whole area to open? 
+               Actually, pointer-events-none on object allows clicks to pass through to a wrapper if we want.
+               But users might want to scroll the PDF. 
+               The user asked for "preview", implies seeing it.
+               Let's enable pointer events but keep a "Open New Tab" overlay.
+           */}
+          <a
+            href={url}
+            target="_blank"
+            rel="noreferrer"
+            className="absolute inset-0 bg-transparent flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-black/10"
+          >
+            <div className="bg-white/90 backdrop-blur px-3 py-1.5 rounded-full text-xs font-medium shadow-sm flex items-center gap-2">
+              <Maximize2 size={12} />
+              Open Full PDF
+            </div>
+          </a>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <a
+            href={url}
+            download
+            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-xs font-medium transition-colors text-gray-700 decoration-0"
+          >
+            <Download size={14} />
+            Download PDF
+          </a>
+          <button
+            onClick={onShare}
+            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-xs font-medium transition-colors text-gray-700"
+          >
+            <Share size={14} />
+            Share
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Standard Image Rendering
+  return (
+    <div className="space-y-2">
+      <div
+        className="relative group cursor-pointer"
+        onClick={handleOpen}
+      >
+        <div className="relative rounded-lg overflow-hidden border border-black/10 bg-gray-50 aspect-video group-hover:shadow-md transition-all">
+          <img
+            src={url}
+            alt={title}
+            className="w-full h-full object-contain p-2"
+          />
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors flex items-center justify-center">
+            <div className="bg-white/90 backdrop-blur px-3 py-1.5 rounded-full text-xs font-medium shadow-sm flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Maximize2 size={12} />
+              Open in New Tab
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <a
+          href={url}
+          download={`${title.replace(/\s+/g, '_')}_Plan.png`}
+          className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-xs font-medium transition-colors text-gray-700 decoration-0"
+        >
+          <Download size={14} />
+          Download
+        </a>
+        <button
+          onClick={onShare}
+          className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-xs font-medium transition-colors text-gray-700"
+        >
+          <Share size={14} />
+          Share
+        </button>
+      </div>
+    </div>
+  );
+}
+
+
 export function SuiteDetailsTab() {
-  const { selectedUnitKey, unitsData } = useExploreState();
+  const { selectedUnitKey, unitsData, setShareModalOpen } = useExploreState();
   const { openFloorplan } = useFloorplan();
-  const [shareUrlCopied, setShareUrlCopied] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const displayUnit = selectedUnitKey ? unitsData.get(selectedUnitKey) : null;
 
-  const isTower = displayUnit ? isTowerUnit(displayUnit.unit_name || '') : false;
-  const isMaryland = displayUnit ? isMarylandUnit(displayUnit.unit_name || '') : false;
-  const isFifthStreet = displayUnit ? isFifthStreetUnit(displayUnit.unit_name || '') : false;
+  // --- Floorplan Resolution Logic ---
+  // Prioritize CSV data, fallback to mapping service if needed
+  const getPrimaryFloorplan = () => {
+    if (!displayUnit) return null;
+    if (displayUnit.floorplan_url) return encodeFloorplanUrl(displayUnit.floorplan_url);
 
-  const individualFloorplan = displayUnit ? (
-    isTower ? getTowerUnitIndividualFloorplan(displayUnit.unit_name || '') :
-      isMaryland ? getMarylandUnitIndividualFloorplan(displayUnit.unit_name || '') :
-        isFifthStreet ? getFifthStreetUnitIndividualFloorplan(displayUnit.unit_name || '') :
-          null
-  ) : null;
+    // Fallback logic
+    if (isTowerUnit(displayUnit.unit_name)) return encodeFloorplanUrl(`floorplans/converted/${getTowerUnitIndividualFloorplan(displayUnit.unit_name)}`);
+    if (isMarylandUnit(displayUnit.unit_name)) return encodeFloorplanUrl(`floorplans/converted/${getMarylandUnitIndividualFloorplan(displayUnit.unit_name)}`);
+    if (isFifthStreetUnit(displayUnit.unit_name)) return encodeFloorplanUrl(`floorplans/converted/${getFifthStreetUnitIndividualFloorplan(displayUnit.unit_name)}`);
 
-  const hasIndividualFloorplan = (isTower || isMaryland || isFifthStreet) && individualFloorplan;
+    // Generic fallback
+    return encodeFloorplanUrl(getIntelligentFloorplanUrl(displayUnit.unit_name, displayUnit));
+  };
 
-  const getFloorplanUrl = () => {
-    if (!displayUnit || !displayUnit.unit_name) {
-      return null;
+  const getSecondaryFloorplan = () => {
+    if (!displayUnit) return null;
+    if (displayUnit.full_floor_floorplan_url) return encodeFloorplanUrl(displayUnit.full_floor_floorplan_url);
+
+    // Fallback logic
+    if (displayUnit.floorplan_url) {
+      // If we have a primary, maybe the legacy logic has a secondary?
+      if (isTowerUnit(displayUnit.unit_name)) return encodeFloorplanUrl(`floorplans/converted/${getTowerUnitFloorFloorplan(displayUnit.unit_name)}`);
+      if (isMarylandUnit(displayUnit.unit_name)) return encodeFloorplanUrl(`floorplans/converted/${getMarylandUnitFloorFloorplan(displayUnit.unit_name)}`);
+      if (isFifthStreetUnit(displayUnit.unit_name)) return encodeFloorplanUrl(`floorplans/converted/${getFifthStreetUnitFloorFloorplan(displayUnit.unit_name)}`);
     }
+    return null;
+  };
 
-    // For units with multiple floorplans (Tower, Maryland, Fifth Street)
-    if (isTower || isMaryland || isFifthStreet) {
-      // DEFAULT: Show individual unit floorplan (Top Slot)
-      let individualFloorplan = null;
-      if (isTower) {
-        individualFloorplan = getTowerUnitIndividualFloorplan(displayUnit.unit_name);
-      } else if (isMaryland) {
-        individualFloorplan = getMarylandUnitIndividualFloorplan(displayUnit.unit_name);
-      } else if (isFifthStreet) {
-        individualFloorplan = getFifthStreetUnitIndividualFloorplan(displayUnit.unit_name);
-      }
+  const primaryFloorplanUrl = getPrimaryFloorplan();
+  let secondaryFloorplanUrl = getSecondaryFloorplan();
 
-      // If individual exists, use it. Otherwise fallback to floor level.
-      if (individualFloorplan) {
-        const rawUrl = `floorplans/converted/${individualFloorplan}`;
-        return encodeFloorplanUrl(rawUrl);
-      } else {
-        // Fallback if no individual plan exists
-        let floorFloorplan = null;
-        if (isTower) {
-          floorFloorplan = getTowerUnitFloorFloorplan(displayUnit.unit_name);
-        } else if (isMaryland) {
-          floorFloorplan = getMarylandUnitFloorFloorplan(displayUnit.unit_name);
-        } else if (isFifthStreet) {
-          floorFloorplan = getFifthStreetUnitFloorFloorplan(displayUnit.unit_name);
-        }
-        const rawUrl = floorFloorplan ? `floorplans/converted/${floorFloorplan}` : null;
-        return rawUrl ? encodeFloorplanUrl(rawUrl) : null;
-      }
-    } else {
-      // Fallback to intelligent matching for other units
-      const rawUrl = getIntelligentFloorplanUrl(displayUnit.unit_name, displayUnit);
-      return rawUrl ? encodeFloorplanUrl(rawUrl) : null;
+  // Deduplicate: If secondary matches primary, don't show it twice.
+  // This happens for Ground Floor units where we force the generic map as primary.
+  if (primaryFloorplanUrl && secondaryFloorplanUrl && primaryFloorplanUrl === secondaryFloorplanUrl) {
+    secondaryFloorplanUrl = null;
+  }
+
+  const tourUrl = displayUnit?.tour_3d_url;
+
+  // Helper to open floorplan in a custom new tab with Download button
+  const openFloorplanInNewTab = (url: string, title: string) => {
+    const newWindow = window.open('', '_blank');
+    if (newWindow) {
+      newWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>${title} - Floorplan</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+              body { 
+                margin: 0; 
+                display: flex; 
+                flex-direction: column; 
+                align-items: center; 
+                justify-content: center; 
+                min-height: 100vh; 
+                background: #f8fafc; 
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+                color: #1e293b;
+              }
+              .container {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 2rem;
+                padding: 2rem;
+                max-width: 100%;
+              }
+              .image-wrapper {
+                background: white;
+                padding: 2rem;
+                border-radius: 1rem;
+                box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+                max-width: 90vw;
+                max-height: 80vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+              }
+              img {
+                max-width: 100%;
+                max-height: 100%;
+                object-fit: contain;
+              }
+              h1 {
+                margin: 0;
+                font-size: 1.5rem;
+                font-weight: 600;
+              }
+              .btn { 
+                text-decoration: none; 
+                background: #0f172a; 
+                color: white; 
+                padding: 0.75rem 1.5rem; 
+                border-radius: 0.5rem; 
+                font-weight: 500; 
+                transition: all 0.2s; 
+                display: inline-flex; 
+                align-items: center; 
+                gap: 0.75rem; 
+                box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+              }
+              .btn:hover { 
+                background: #334155; 
+                transform: translateY(-1px);
+                box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+              }
+              svg { width: 20px; height: 20px; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <h1>${title}</h1>
+              <div class="image-wrapper">
+                <img src="${url}" alt="${title}" />
+              </div>
+              <a href="${url}" download="${title.replace(/\s+/g, '_')}_Floorplan.png" class="btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Download Floorplan
+              </a>
+            </div>
+          </body>
+        </html>
+      `);
+      newWindow.document.close();
     }
   };
 
-  const getSecondaryFloorplanUrl = () => {
-    try {
-      if (!displayUnit || !displayUnit.unit_name) {
-        return null;
-      }
-
-      // For units with multiple floorplans, show the floor-level view as secondary (Bottom Slot)
-      if (isTower || isMaryland || isFifthStreet) {
-        // Only show secondary if we have an individual plan on top
-        if (hasIndividualFloorplan) {
-          let floorFloorplan = null;
-          if (isTower) {
-            floorFloorplan = getTowerUnitFloorFloorplan(displayUnit.unit_name);
-          } else if (isMaryland) {
-            floorFloorplan = getMarylandUnitFloorFloorplan(displayUnit.unit_name);
-          } else if (isFifthStreet) {
-            floorFloorplan = getFifthStreetUnitFloorFloorplan(displayUnit.unit_name);
-          }
-
-          const rawUrl = floorFloorplan ? `floorplans/converted/${floorFloorplan}` : null;
-          return rawUrl ? encodeFloorplanUrl(rawUrl) : null;
-        }
-      }
-
-      return null;
-    } catch (error) {
-      console.error('❌ Error getting secondary floorplan URL:', error);
-      return null;
-    }
-  };
-
-  const currentFloorplanUrl = getFloorplanUrl();
-  const secondaryFloorplanUrl = getSecondaryFloorplanUrl();
-
-  const handleFloorPlanClick = () => {
-    if (currentFloorplanUrl && displayUnit) {
-      openFloorplan(currentFloorplanUrl, displayUnit.unit_name, displayUnit);
-    }
-  };
-
-  const handleSecondaryFloorPlanClick = () => {
-    if (secondaryFloorplanUrl && displayUnit) {
-      const secondaryTitle = hasIndividualFloorplan
-        ? `${displayUnit.unit_name} - Floor Layout`
-        : `${displayUnit.unit_name} - Unit Layout`;
-      openFloorplan(secondaryFloorplanUrl, secondaryTitle, displayUnit);
-    }
-  };
-
-  const handleShareClick = async () => {
+  const handleShareClick = () => {
     if (!displayUnit) return;
-    const shareUrl = `${window.location.origin}${window.location.pathname}?sel=${displayUnit.unit_key}`;
+    setShareModalOpen(true, {
+      unitKey: displayUnit.unit_key,
+      unitName: displayUnit.unit_name,
+      floorplanUrl: primaryFloorplanUrl || undefined,
+      fullFloorUrl: secondaryFloorplanUrl || undefined
+    });
+  };
 
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      setShareUrlCopied(true);
-      setTimeout(() => setShareUrlCopied(false), 3000);
-    } catch (err) {
-      console.error('Failed to copy share URL:', err);
+  const handleTourClick = () => {
+    if (tourUrl) {
+      window.open(tourUrl, '_blank');
     }
   };
 
+  // --- Scroll Logic ---
   useEffect(() => {
     const handleScroll = () => {
       if (scrollContainerRef.current) {
         setShowScrollTop(scrollContainerRef.current.scrollTop > 200);
       }
     };
-
     const container = scrollContainerRef.current;
     if (container) {
       container.addEventListener('scroll', handleScroll);
@@ -181,18 +316,38 @@ export function SuiteDetailsTab() {
   return (
     <div ref={scrollContainerRef} className="h-full overflow-y-auto relative">
       <div className="p-4 space-y-4 pb-24">
+
+        {/* Header Section */}
         <div className="flex items-start justify-between">
           <div>
             <h2 className="text-xl font-bold text-gray-900">{displayUnit.unit_name}</h2>
-            <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium mt-2 ${isAvailable
-              ? 'bg-green-100 text-green-700'
-              : 'bg-red-100 text-red-700'
-              }`}>
-              {isAvailable ? 'Available' : 'Occupied'}
+            <div className="flex gap-2 mt-2">
+              <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${isAvailable
+                ? 'bg-green-100 text-green-700'
+                : 'bg-red-100 text-red-700'
+                }`}>
+                {isAvailable ? 'Available' : 'Occupied'}
+              </div>
+
+              {/* Production Office Badge */}
+              {displayUnit.is_production_office && (
+                <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                  Production Office
+                </div>
+              )}
             </div>
           </div>
+
+          <button
+            onClick={handleShareClick}
+            className="p-2 text-gray-500 hover:text-black hover:bg-gray-100 rounded-full transition-colors"
+            title="Share Floorplan"
+          >
+            <Share size={20} />
+          </button>
         </div>
 
+        {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-3">
           {displayUnit.area_sqft && (
             <div className="flex items-start space-x-2">
@@ -232,23 +387,25 @@ export function SuiteDetailsTab() {
                 <div className="text-sm font-medium">{displayUnit.floor || 'N/A'}</div>
               </div>
             </div>
-            <div className="flex items-center text-[11px] font-semibold text-gray-600 bg-gray-100 px-2 py-1 rounded-full whitespace-nowrap">
-              {displayUnit.private_offices === undefined || displayUnit.private_offices === null
-                ? 'Private Offices: N/A'
-                : displayUnit.private_offices === 0
-                  ? 'Open Floor Plan'
-                  : `${displayUnit.private_offices} ${displayUnit.private_offices === 1 ? 'Office' : 'Offices'}`}
-            </div>
           </div>
         </div>
 
-        {displayUnit.kitchen_size && displayUnit.kitchen_size.toLowerCase() !== 'none' && (
-          <div className="p-3 bg-blue-50 rounded-lg">
-            <div className="text-xs text-blue-600 font-medium mb-1">Kitchen</div>
-            <div className="text-sm text-gray-700">{displayUnit.kitchen_size}</div>
+        {/* Office / Kitchen Badges */}
+        <div className="flex flex-wrap gap-2">
+          <div className="flex items-center text-[11px] font-semibold text-gray-600 bg-gray-100 px-3 py-1.5 rounded-full whitespace-nowrap">
+            {displayUnit.private_offices && displayUnit.private_offices > 0
+              ? `${displayUnit.private_offices} Private Office${displayUnit.private_offices > 1 ? 's' : ''}`
+              : 'Open Floor Plan'}
           </div>
-        )}
 
+          {(displayUnit.has_kitchen || (displayUnit.kitchen_size && displayUnit.kitchen_size !== 'None')) && (
+            <div className="flex items-center text-[11px] font-semibold text-blue-700 bg-blue-50 px-3 py-1.5 rounded-full whitespace-nowrap">
+              Kitchen Available
+            </div>
+          )}
+        </div>
+
+        {/* Notes */}
         {displayUnit.notes && (
           <div className="p-3 bg-gray-50 rounded-lg">
             <div className="text-xs text-gray-600 font-medium mb-1">Notes</div>
@@ -256,84 +413,73 @@ export function SuiteDetailsTab() {
           </div>
         )}
 
-        {currentFloorplanUrl && (
-          <div className="space-y-4">
-            <div className="relative group cursor-pointer" onClick={handleFloorPlanClick}>
-              <div className="relative rounded-lg overflow-hidden border border-black/10 bg-gray-50">
-                <img
-                  src={currentFloorplanUrl}
-                  alt={`${displayUnit.unit_name} Floor Plan Preview`}
-                  className="w-full h-48 object-contain"
-                />
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-white rounded-full p-3 shadow-lg">
-                    <Maximize2 size={24} className="text-gray-700" />
-                  </div>
-                </div>
-              </div>
-              <div className="text-xs text-center text-gray-500 mt-2">
-                {hasIndividualFloorplan ? 'Individual Unit Layout' : 'Floor Plan'} - Click to expand
-              </div>
-            </div>
+        {/* --- Media Buttons & Previews --- */}
+        <div className="space-y-4 pt-2">
 
-            {secondaryFloorplanUrl && (
-              <div className="relative group cursor-pointer" onClick={handleSecondaryFloorPlanClick}>
-                <div className="relative rounded-lg overflow-hidden border border-black/10 bg-gray-50">
-                  <img
-                    src={secondaryFloorplanUrl}
-                    alt={`${displayUnit.unit_name} Secondary Floor Plan Preview`}
-                    className="w-full h-40 object-contain"
-                    onError={(e) => {
-                      console.warn('❌ Secondary floorplan image failed to load:', secondaryFloorplanUrl);
-                      const container = e.currentTarget.parentElement?.parentElement;
-                      if (container) {
-                        container.style.display = 'none';
-                        console.log('🚫 Hidden secondary floorplan container due to load error');
-                      }
-                    }}
-                    onLoad={() => {
-                      console.log('✅ Secondary floorplan loaded successfully:', secondaryFloorplanUrl);
-                    }}
-                  />
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                    <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-white rounded-full p-2 shadow-lg">
-                      <Maximize2 size={20} className="text-gray-700" />
-                    </div>
-                  </div>
-                </div>
-                <div className="text-xs text-center text-gray-500 mt-2">
-                  Full Floor Layout - Click to expand
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-
-
-        {displayUnit.recipients && displayUnit.recipients.length > 0 && (
-          <div className="pt-2">
+          {/* 3D Tour Button */}
+          {tourUrl && (
             <button
-              onClick={() => {
-                // Open the global request form
-                const { setSingleUnitRequestOpen } = useExploreState.getState();
-                setSingleUnitRequestOpen(true, {
-                  unitKey: displayUnit.unit_key,
-                  unitName: displayUnit.unit_name
-                });
-              }}
-              className="w-full px-4 py-3 bg-black text-white rounded-lg hover:bg-gray-800 transition text-sm font-medium"
+              onClick={handleTourClick}
+              className="w-full flex items-center justify-center gap-2 p-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition shadow-sm"
             >
-              Lease this space
+              <Maximize2 size={16} />
+              <span>Launch 3D Virtual Tour</span>
             </button>
-          </div>
-        )}
+          )}
+
+          {/* Floorplans */}
+          {/* Floorplans */}
+          {/* Floorplans */}
+          {(primaryFloorplanUrl || secondaryFloorplanUrl) && (
+            <div className="space-y-6">
+              {/* Primary Plan */}
+              {primaryFloorplanUrl && (
+                <div className="space-y-2">
+                  <FloorplanPreview
+                    url={primaryFloorplanUrl}
+                    title={displayUnit.unit_name}
+                    label="Suite Plan"
+                    onShare={handleShareClick}
+                  />
+                </div>
+              )}
+
+              {/* Secondary Plan */}
+              {secondaryFloorplanUrl && (
+                <div className="space-y-2">
+                  <FloorplanPreview
+                    url={secondaryFloorplanUrl}
+                    title={`${displayUnit.unit_name} Full Floor`}
+                    label="Full Floor Plan"
+                    onShare={handleShareClick}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Lease Button */}
+        <div className="pt-4 border-t border-gray-100">
+          <button
+            onClick={() => {
+              const { setSingleUnitRequestOpen } = useExploreState.getState();
+              setSingleUnitRequestOpen(true, {
+                unitKey: displayUnit.unit_key,
+                unitName: displayUnit.unit_name
+              });
+            }}
+            className="w-full px-4 py-3 bg-black text-white rounded-lg hover:bg-gray-800 transition text-sm font-medium shadow-lg shadow-gray-200"
+          >
+            Lease this space
+          </button>
+        </div>
       </div>
 
       {showScrollTop && (
         <button
           onClick={scrollToTop}
-          className="fixed bottom-6 right-6 bg-blue-500 text-white p-3 rounded-full shadow-lg hover:bg-blue-600 transition z-50"
+          className="fixed bottom-6 right-6 bg-black text-white p-3 rounded-full shadow-lg hover:bg-gray-800 transition z-50"
           title="Scroll to top"
         >
           <ArrowUp size={20} />

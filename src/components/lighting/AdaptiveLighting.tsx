@@ -17,7 +17,7 @@ export function AdaptiveLighting({ scene, tier }: AdaptiveLightingProps) {
     if (!lightRef.current) return;
     const light = lightRef.current;
 
-    const res = tier.startsWith('desktop') ? 2048 : tier === 'mobile-high' ? 1536 : 1024;
+    const res = tier.startsWith('desktop') ? 2048 : tier === 'mobile-high' ? 1024 : 512;
     light.shadow.mapSize.width = res;
     light.shadow.mapSize.height = res;
 
@@ -32,11 +32,11 @@ export function AdaptiveLighting({ scene, tier }: AdaptiveLightingProps) {
       <directionalLight
         ref={lightRef}
         castShadow
-        position={[15, 30, 15]}
-        intensity={2.5}
+        position={[35, 20, 15]}
+        intensity={3.5}
         color="#ffdcb4"
       />
-      <ambientLight intensity={0.4} />
+      <ambientLight intensity={0.25} />
       <Environment
         files={assetUrl("textures/kloofendal_48d_partly_cloudy_puresky_2k.hdr")}
         background={false}

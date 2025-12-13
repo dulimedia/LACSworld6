@@ -5,9 +5,9 @@ interface FlashKillerProps {
   duration?: number; // How long to show freeze-frame (ms)
 }
 
-export const FlashKiller: React.FC<FlashKillerProps> = ({ 
-  isActive, 
-  duration = 400 
+export const FlashKiller: React.FC<FlashKillerProps> = ({
+  isActive,
+  duration = 400
 }) => {
   const [freezeFrameUrl, setFreezeFrameUrl] = useState<string | null>(null);
   const [showFreeze, setShowFreeze] = useState(false);
@@ -21,7 +21,7 @@ export const FlashKiller: React.FC<FlashKillerProps> = ({
       try {
         // Find the R3F canvas element in DOM
         const canvasElement = document.querySelector('canvas') as HTMLCanvasElement;
-        
+
         if (canvasElement) {
           // Check if WebGL context is available before capturing
           const gl = canvasElement.getContext('webgl2') || canvasElement.getContext('webgl');
@@ -30,14 +30,14 @@ export const FlashKiller: React.FC<FlashKillerProps> = ({
             const dataUrl = canvasElement.toDataURL('image/jpeg', 0.8);
             setFreezeFrameUrl(dataUrl);
             setShowFreeze(true);
-            
+
             console.log('🧊 FREEZE-FRAME: Captured canvas to prevent flash');
           } else {
             console.warn('⚠️ WebGL context lost or unavailable, skipping freeze-frame');
             setShowFreeze(false);
             return;
           }
-          
+
           // Hide freeze-frame after duration
           timeoutRef.current = setTimeout(() => {
             setShowFreeze(false);
@@ -52,11 +52,11 @@ export const FlashKiller: React.FC<FlashKillerProps> = ({
             setShowFreeze(false);
             setFreezeFrameUrl(null);
           }, 2000);
-          
+
         } else {
           console.warn('❌ No canvas found for freeze-frame capture');
         }
-        
+
       } catch (error) {
         console.error('❌ Failed to capture freeze-frame (WebGL context may be lost):', error);
         setShowFreeze(false);
@@ -67,7 +67,7 @@ export const FlashKiller: React.FC<FlashKillerProps> = ({
       setShowFreeze(false);
       setTimeout(() => setFreezeFrameUrl(null), 100);
     }
-    
+
     return () => {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
@@ -99,6 +99,7 @@ export const FlashKiller: React.FC<FlashKillerProps> = ({
       }}
     >
       {/* Optional subtle fade indicator */}
+      {/* Optional subtle fade indicator - HIDDEN FOR PRODUCTION
       <div
         style={{
           position: 'absolute',
@@ -115,6 +116,7 @@ export const FlashKiller: React.FC<FlashKillerProps> = ({
       >
         🧊 FREEZE
       </div>
+      */}
     </div>
   );
 };

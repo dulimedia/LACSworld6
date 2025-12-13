@@ -15,7 +15,7 @@ export const SingleUnitRequestForm: React.FC<SingleUnitRequestFormProps> = ({
   unitKey,
   unitName
 }) => {
-  
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -24,10 +24,10 @@ export const SingleUnitRequestForm: React.FC<SingleUnitRequestFormProps> = ({
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [errors, setErrors] = useState<{[key: string]: string}>({});
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   const validateForm = () => {
-    const newErrors: {[key: string]: string} = {};
+    const newErrors: { [key: string]: string } = {};
 
     if (!formData.name.trim()) {
       newErrors.name = 'Name is required';
@@ -49,36 +49,67 @@ export const SingleUnitRequestForm: React.FC<SingleUnitRequestFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
 
     setIsSubmitting(true);
 
+    // ALWAYS send to lacenterstudios3d@gmail.com as requested
+    const recipientEmail = 'lacenterstudios3d@gmail.com';
+
     try {
-      // Prepare email data
-      const emailData = {
-        to: 'lacenterstudios3d@gmail.com', // LA Center Studios email for unit requests
-        subject: `Suite Inquiry - ${unitName} - ${formData.name}`,
-        body: `
-New Suite Inquiry
+      console.log('🔄 Starting EmailJS send process for single unit...');
 
-From: ${formData.name}
-Email: ${formData.email}
-Phone: ${formData.phone || 'Not provided'}
+      // Load EmailJS if not already loaded
+      if (!window.emailjs) {
+        console.log('📦 Loading EmailJS library...');
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js';
+        document.head.appendChild(script);
+        await new Promise<void>((resolve, reject) => {
+          script.onload = () => {
+            console.log('✅ EmailJS script loaded successfully');
+            resolve();
+          };
+          script.onerror = (error) => {
+            console.error('❌ Failed to load EmailJS script:', error);
+            reject(error);
+          };
+          setTimeout(() => {
+            console.error('⏰ EmailJS script load timeout');
+            reject(new Error('Script load timeout'));
+          }, 10000);
+        });
 
-Requested Suite: ${unitName}
+        // Initialize EmailJS with your public key
+        console.log('🔧 Initializing EmailJS with public key...');
+        window.emailjs.init('7v5wJOSuv1p_PkcU5');
+        console.log('✅ EmailJS initialized with key: 7v5wJOSuv1p_PkcU5');
+      } else {
+        console.log('✅ EmailJS already loaded and available');
+      }
 
-Message:
-${formData.message}
-
----
-Sent from LA Center Suite Request System
-        `.trim()
+      // Prepare template parameters
+      const templateParams = {
+        from_name: formData.name,
+        from_email: formData.email,
+        phone: formData.phone || 'Not provided',
+        message: formData.message || 'No additional message',
+        selected_units: `• ${unitName} (Single Unit Request)`,
+        to_email: recipientEmail,
+        reply_to: formData.email
       };
 
-      // Using mailto link for immediate functionality
-      const mailtoLink = `mailto:${emailData.to}?subject=${encodeURIComponent(emailData.subject)}&body=${encodeURIComponent(emailData.body)}`;
-      window.open(mailtoLink, '_blank');
+      console.log('📧 Attempting to send email with:', templateParams);
+
+      // Send email using EmailJS
+      await window.emailjs.send(
+        'service_q47lbr7', // Service ID
+        'template_0zeil8m', // Template ID
+        templateParams
+      );
+
+      console.log('✅ Email sent successfully via EmailJS!');
 
       setIsSubmitted(true);
 
@@ -87,10 +118,16 @@ Sent from LA Center Suite Request System
         setIsSubmitted(false);
         setFormData({ name: '', email: '', phone: '', message: '' });
         onClose();
-      }, 2000);
+      }, 3000);
 
-    } catch (error) {
-      alert('Failed to submit request. Please try again.');
+    } catch (error: any) {
+      console.error('❌ Email sending failed:', error);
+
+      if (error.text === 'The user ID is invalid') {
+        alert('Configuration error: Invalid user ID. Please contact support.');
+      } else {
+        alert('Failed to submit request. Please try again or contact us directly.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -116,9 +153,8 @@ Sent from LA Center Suite Request System
       justifyContent: 'center',
       paddingTop: isMobile ? '80px' : '0px'
     }}>
-      <div className={`bg-white rounded-lg shadow-xl max-w-md w-full mx-4 overflow-y-auto transition-all duration-500 ease-in-out transform ${
-        isMobile ? 'max-h-[calc(100vh-100px)]' : 'max-h-[90vh]'
-      } ${isOpen ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'}`}>
+      <div className={`bg-white rounded-lg shadow-xl max-w-md w-full mx-4 overflow-y-auto transition-all duration-500 ease-in-out transform ${isMobile ? 'max-h-[calc(100vh-100px)]' : 'max-h-[90vh]'
+        } ${isOpen ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'}`}>
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div>
@@ -154,9 +190,8 @@ Sent from LA Center Suite Request System
                   id="name"
                   value={formData.name}
                   onChange={(e) => handleInputChange('name', e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors ${
-                    errors.name ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors ${errors.name ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                    }`}
                   placeholder="John Doe"
                   disabled={isSubmitting}
                 />
@@ -173,9 +208,8 @@ Sent from LA Center Suite Request System
                   id="email"
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors ${
-                    errors.email ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors ${errors.email ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                    }`}
                   placeholder="john@example.com"
                   disabled={isSubmitting}
                 />
@@ -208,9 +242,8 @@ Sent from LA Center Suite Request System
                   rows={4}
                   value={formData.message}
                   onChange={(e) => handleInputChange('message', e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors resize-none ${
-                    errors.message ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors resize-none ${errors.message ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                    }`}
                   placeholder="Let us know when you need it, for how long, and any questions."
                   disabled={isSubmitting}
                 />

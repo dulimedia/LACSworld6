@@ -1,7 +1,9 @@
 import React, { useRef, useState, useCallback, useEffect, useMemo } from 'react';
-import { useGLTF, useFBX } from '@react-three/drei';
-import { useFrame, useThree } from '@react-three/fiber';
+import { useFBX } from '@react-three/drei';
+import { useFrame, useThree, useLoader } from '@react-three/fiber';
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { configureGLTFLoader } from '../three/loaders';
 import { Mesh, Object3D, MeshStandardMaterial, MeshPhysicalMaterial, Material, Color } from 'three';
 import { UNIT_BOX_GLB_FILES } from '../data/unitBoxGlbFiles';
 import { UnitData, LoadedModel } from '../types';
@@ -14,7 +16,7 @@ import { logger } from '../utils/logger';
 import { MobileDiagnostics } from '../debug/mobileDiagnostics';
 import { FILTER_HIGHLIGHT_CONFIG } from '../config/ghostMaterialConfig';
 
-const DRACO_DECODER_CDN = 'https://www.gstatic.com/draco/versioned/decoders/1.5.6/';
+
 
 class UnitWarehouseErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error?: any }> {
   constructor(props: { children: React.ReactNode }) {
@@ -40,7 +42,8 @@ class UnitWarehouseErrorBoundary extends React.Component<{ children: React.React
 
 
 function BoundingSphere({ onBoundingSphereData }: { onBoundingSphereData?: (data: { center: THREE.Vector3, radius: number }) => void }) {
-  const { scene } = useGLTF(assetUrl('models/environment/road.glb'));
+  const { gl } = useThree();
+  const { scene } = useLoader(GLTFLoader, assetUrl('models/environment/road.glb'), (loader) => configureGLTFLoader(loader, gl));
 
   React.useEffect(() => {
     if (scene) {
@@ -101,7 +104,7 @@ const SingleModelGLB: React.FC<{
     return null;
   }
 
-  const { scene, materials } = useGLTF(modelUrl, DRACO_DECODER_CDN);
+  const { scene, materials } = useLoader(GLTFLoader, modelUrl, (loader) => configureGLTFLoader(loader, gl));
 
   if (!scene) {
     logger.error('Scene not loaded for:', fileName);

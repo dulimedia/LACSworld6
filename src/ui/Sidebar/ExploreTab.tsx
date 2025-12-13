@@ -16,8 +16,7 @@ const SIZE_OPTIONS = [
 
 const STATUS_OPTIONS = [
   { value: 'any', label: 'Any' },
-  { value: 'plug-and-play', label: 'Plug and Play' },
-  { value: 'build-to-suit', label: 'Build to Suit' },
+  { value: 'production-offices', label: 'Production Offices' },
 ];
 
 const OFFICES_OPTIONS = [
@@ -120,13 +119,12 @@ export function ExploreTab() {
               return;
             }
 
-            // DEBUG: Log unit data when office filter is active
-            if (officesFilter !== 'any') {
-              console.log(`🔍 Checking unit: ${unit.unit_name}, offices=${unit.private_offices}, available=${unit.status}`);
-            }
-
             let passes = true;
 
+            // "Available Only" Toggle Logic
+            // If showAvailableOnly is true, we ONLY show available units.
+            // But we also have "Off Market" filter which implies unavailable units.
+            // If "Off Market" is selected, we should IGNORE showAvailableOnly (or implied it's false).
             if (showAvailableOnly && !unit.status) {
               passes = false;
             }
@@ -135,21 +133,14 @@ export function ExploreTab() {
               const option = SIZE_OPTIONS.find(o => o.value === sizeFilter);
               if (option && option.min !== -1 && option.max !== -1) {
                 if (unit.area_sqft < option.min || unit.area_sqft > option.max) {
-                  console.log(`📊 Size: ${unit.unit_name} (${unit.area_sqft}sf) excluded by ${option.min}-${option.max}`);
                   passes = false;
-                } else {
-                  console.log(`✅ Size: ${unit.unit_name} (${unit.area_sqft}sf) passes ${option.min}-${option.max}`);
                 }
               }
             }
 
             if (statusFilter !== 'any') {
-              if (statusFilter === 'plug-and-play') {
-                if (!unit.plug_and_play) {
-                  passes = false;
-                }
-              } else if (statusFilter === 'build-to-suit') {
-                if (!unit.build_to_suit) {
+              if (statusFilter === 'production-offices') {
+                if (!unit.is_production_office) {
                   passes = false;
                 }
               }
@@ -174,10 +165,7 @@ export function ExploreTab() {
               }
 
               if (!officeMatches) {
-                console.log(`❌ Office: ${unit.unit_name} (${normalizedCount}) excluded by '${officesFilter}'`);
                 passes = false;
-              } else {
-                console.log(`✅ Office: ${unit.unit_name} (${normalizedCount}) passes '${officesFilter}'`);
               }
             }
 
@@ -229,13 +217,9 @@ export function ExploreTab() {
               return;
             }
 
-            // DEBUG: Log unit data when office filter is active
-            if (officesFilter !== 'any') {
-              console.log(`🔍 Checking unit: ${unit.unit_name}, offices=${unit.private_offices}, available=${unit.status}`);
-            }
-
             let passes = true;
 
+            // "Available Only" Toggle Logic
             if (showAvailableOnly && !unit.status) {
               passes = false;
             }
@@ -244,21 +228,14 @@ export function ExploreTab() {
               const option = SIZE_OPTIONS.find(o => o.value === sizeFilter);
               if (option && option.min !== -1 && option.max !== -1) {
                 if (unit.area_sqft < option.min || unit.area_sqft > option.max) {
-                  console.log(`📊 Size: ${unit.unit_name} (${unit.area_sqft}sf) excluded by ${option.min}-${option.max}`);
                   passes = false;
-                } else {
-                  console.log(`✅ Size: ${unit.unit_name} (${unit.area_sqft}sf) passes ${option.min}-${option.max}`);
                 }
               }
             }
 
             if (statusFilter !== 'any') {
-              if (statusFilter === 'plug-and-play') {
-                if (!unit.plug_and_play) {
-                  passes = false;
-                }
-              } else if (statusFilter === 'build-to-suit') {
-                if (!unit.build_to_suit) {
+              if (statusFilter === 'production-offices') {
+                if (!unit.is_production_office) {
                   passes = false;
                 }
               }
@@ -462,7 +439,7 @@ export function ExploreTab() {
             <Home size={14} className="text-gray-500" />
             <span className="text-xs font-semibold uppercase tracking-wide text-black/60">Status</span>
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             {STATUS_OPTIONS.map((option) => {
               const isActive = statusFilter === option.value;
               return (

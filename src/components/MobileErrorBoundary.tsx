@@ -4,6 +4,7 @@ import { PerfFlags } from '../perf/PerfFlags';
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
+  onError?: (error: Error) => void;
 }
 
 interface State {
@@ -25,16 +26,21 @@ export class MobileErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('🚨 Mobile Error Boundary caught error:', error);
     console.error('🚨 Error info:', errorInfo);
-    
+
     this.setState({
       error,
       errorInfo
     });
 
+    // Notify parent
+    if (this.props.onError) {
+      this.props.onError(error);
+    }
+
     if (PerfFlags.isMobile) {
       console.error('🚨 MOBILE CRASH DETECTED');
-      console.error('🚨 Device:', { 
-        isIOS: PerfFlags.isIOS, 
+      console.error('🚨 Device:', {
+        isIOS: PerfFlags.isIOS,
         isMobile: PerfFlags.isMobile,
         memory: (navigator as any).deviceMemory || 'unknown',
         userAgent: navigator.userAgent.substring(0, 100)
@@ -67,7 +73,7 @@ export class MobileErrorBoundary extends Component<Props, State> {
                 {isMobile ? 'Mobile Loading Error' : 'Scene Error'}
               </h2>
               <p className="text-gray-700 mb-4">
-                {isMobile 
+                {isMobile
                   ? 'The 3D scene could not load on your device. This may be due to limited memory or WebGL restrictions.'
                   : 'An error occurred while loading the 3D scene.'}
               </p>
@@ -87,7 +93,7 @@ export class MobileErrorBoundary extends Component<Props, State> {
                 >
                   🔄 Reload Page
                 </button>
-                
+
                 {isMobile && (
                   <button
                     onClick={this.handleContinue}

@@ -49,8 +49,8 @@ export class MaterialValidator {
   }
 
   private validateMaterial(material: THREE.Material): void {
-    if (!(material instanceof THREE.MeshStandardMaterial || 
-          material instanceof THREE.MeshPhysicalMaterial)) {
+    if (!(material instanceof THREE.MeshStandardMaterial ||
+      material instanceof THREE.MeshPhysicalMaterial)) {
       return;
     }
 
@@ -105,22 +105,22 @@ export class MaterialValidator {
   private fixTransparencySettings(material: THREE.MeshStandardMaterial | THREE.MeshPhysicalMaterial): void {
     if (material.transparent === true) {
       material.depthWrite = false;
-      
+
       if (material.alphaMap && material.alphaTest === 0) {
         material.alphaTest = 0.001;
       }
-      
+
       if (material.blending !== THREE.NormalBlending) {
         material.blending = THREE.NormalBlending;
       }
-      
+
       this.stats.transparentFixed++;
     }
   }
 
   private validateTextures(material: THREE.MeshStandardMaterial | THREE.MeshPhysicalMaterial): void {
     const textureProps = [
-      'map', 'normalMap', 'roughnessMap', 'metalnessMap', 
+      'map', 'normalMap', 'roughnessMap', 'metalnessMap',
       'aoMap', 'emissiveMap', 'alphaMap', 'displacementMap'
     ];
 
@@ -140,27 +140,28 @@ export class MaterialValidator {
 
   private isValidTexture(texture: THREE.Texture): boolean {
     if (!texture.image) return false;
-    
+
     const image = texture.image;
     if (!image.width || !image.height || image.width === 0 || image.height === 0) {
       return false;
     }
-    
+
     return true;
   }
 
   private setTextureColorSpace(texture: THREE.Texture, prop: string): void {
     // Color textures should be sRGB, others linear
     const sRGBTextures = ['map', 'emissiveMap'];
-    texture.colorSpace = sRGBTextures.includes(prop) 
-      ? THREE.SRGBColorSpace 
+    texture.colorSpace = sRGBTextures.includes(prop)
+      ? THREE.SRGBColorSpace
       : THREE.LinearSRGBColorSpace;
   }
 
   setupErrorHandling(renderer: THREE.WebGLRenderer): void {
     // Listen for shader compilation errors
     const originalCompile = renderer.compile;
-    renderer.compile = function(scene: THREE.Scene, camera: THREE.Camera) {
+    // @ts-ignore - Signature mismatch in newer Three/types
+    renderer.compile = function (scene: any, camera: any) {
       try {
         return originalCompile.call(this, scene, camera);
       } catch (error) {
@@ -182,25 +183,25 @@ export class MaterialValidator {
   }
 
   logShaderDefines(material: THREE.Material): void {
-    if (material instanceof THREE.ShaderMaterial || 
-        material instanceof THREE.MeshStandardMaterial ||
-        material instanceof THREE.MeshPhysicalMaterial) {
-      
+    if (material instanceof THREE.ShaderMaterial ||
+      material instanceof THREE.MeshStandardMaterial ||
+      material instanceof THREE.MeshPhysicalMaterial) {
+
       console.group(`🔍 Shader defines for ${material.name || material.type}:`);
-      
+
       // Log common defines that might cause issues
       const defines = (material as any).defines || {};
       const importantDefines = [
         'USE_MAP', 'USE_NORMALMAP', 'USE_UV', 'USE_ROUGHNESSMAP',
         'USE_METALNESSMAP', 'USE_ALPHAMAP', 'USE_AOMAP', 'USE_EMISSIVEMAP'
       ];
-      
+
       importantDefines.forEach(define => {
         if (defines[define] !== undefined) {
           console.log(`  ${define}: ${defines[define]}`);
         }
       });
-      
+
       console.log(`  Precision: ${(material as any).precision || 'default'}`);
       console.groupEnd();
     }
@@ -216,13 +217,13 @@ export function validateAllMaterials(scene: THREE.Scene): ValidationStats {
 export function setupRendererSafety(renderer: THREE.WebGLRenderer): void {
   const validator = MaterialValidator.getInstance();
   validator.setupErrorHandling(renderer);
-  
+
   // Limit anisotropy globally
   const maxAnisotropy = Math.min(renderer.capabilities.getMaxAnisotropy(), 8);
   renderer.capabilities.getMaxAnisotropy = () => maxAnisotropy;
-  
+
   // Shadow map settings
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  
-  console.log(`🔧 Renderer safety setup: maxAnisotropy=${maxAnisotropy}, shadowType=PCFSoft`);
+
+  console.log(`🔧 Renderer safety setup: maxAnisotropy=${maxAnisotropy}, shadowType=PCF`);
 }

@@ -1,6 +1,7 @@
 ﻿import { useEffect, useRef } from "react";
 import { useThree } from "@react-three/fiber";
-import { DirectionalLight, OrthographicCamera, PCFSoftShadowMap, AmbientLight } from "three";
+import { DirectionalLight, AmbientLight } from "three";
+import { configureDirectionalShadows } from "../three/renderer/configureShadows";
 import { useFitDirectionalLightShadow } from "./ShadowFit";
 import { logger } from "../utils/logger";
 import { PerfFlags } from "../perf/PerfFlags";
@@ -41,83 +42,39 @@ export function Lighting({
       isMobileRef.current = isMobile;
       if (cancelled) return;
 
-      const resolvedShadowBias = shadowBias ?? PerfFlags.SHADOW_BIAS;
-      const resolvedShadowNormalBias = shadowNormalBias ?? PerfFlags.SHADOW_NORMAL_BIAS;
-      const resolvedMapSize = PerfFlags.SHADOW_MAP_SIZE;
       const resolvedSunPosition: [number, number, number] = sunPosition ?? [-40, 30, 20];
 
       const oldLights = scene.children.filter(o => o.userData.__sunLight || o.userData.__ambientLight);
       oldLights.forEach(o => scene.remove(o));
 
+      // 1. DIRECTIONAL SUN
       const sun = new DirectionalLight(0xffffff, isMobile ? 3.2 : 7.2);
       sun.position.set(...resolvedSunPosition);
       sun.userData.__sunLight = true;
 
-      if (isMobileLow) {
-        sun.castShadow = false;
-        gl.shadowMap.enabled = false;
-        console.log('Mobile-low: shadows disabled');
-      } else if (isMobileHigh) {
-        sun.castShadow = true;
-        gl.shadowMap.enabled = true;
-        gl.shadowMap.type = PCFSoftShadowMap;
-
-        sun.shadow.mapSize.set(resolvedMapSize, resolvedMapSize);
-        sun.shadow.bias = resolvedShadowBias;
-        sun.shadow.normalBias = resolvedShadowNormalBias;
-        sun.shadow.radius = 2;
-
-        const cam = sun.shadow.camera as OrthographicCamera;
-        cam.left = -70;
-        cam.right = 70;
-        cam.top = 70;
-        cam.bottom = -70;
-        cam.near = 0.5;
-        cam.far = 180;
-        cam.updateProjectionMatrix();
-
-        console.log('Mobile-high: lightweight shadows enabled');
-      } else {
-        sun.castShadow = true;
-        gl.shadowMap.enabled = true;
-        gl.shadowMap.type = PCFSoftShadowMap;
-
-        sun.shadow.mapSize.set(resolvedMapSize, resolvedMapSize);
-        sun.shadow.bias = resolvedShadowBias;
-        sun.shadow.normalBias = resolvedShadowNormalBias;
-        sun.shadow.radius = 0.5;
-
-        const cam = sun.shadow.camera as OrthographicCamera;
-        cam.left = -90;
-        cam.right = 90;
-        cam.top = 90;
-        cam.bottom = -90;
-        cam.near = 0.5;
-        cam.far = 260;
-        cam.updateProjectionMatrix();
-
-        logger.log('LOADING', 'SUN', `Desktop: shadow map initialized ${resolvedMapSize}x${resolvedMapSize}`);
-      }
+      // New: Centralized configuration logic
+      configureDirectionalShadows(sun, gl);
 
       scene.add(sun);
       sunRef.current = sun;
 
+      // 2. AMBIENT LIGHT (Kept logic for intensity/color tiers)
       if (isMobileLow) {
-        const ambient = new AmbientLight(0x404040, 0.6);
+        const ambient = new AmbientLight(0x404040, 0.4);
         ambient.userData.__ambientLight = true;
         scene.add(ambient);
       } else if (isMobileHigh) {
-        const ambient = new AmbientLight(0x303030, 0.4);
+        const ambient = new AmbientLight(0x303030, 0.3);
         ambient.userData.__ambientLight = true;
         scene.add(ambient);
       } else {
-        const ambient = new AmbientLight(0x404040, 0.3);
+        const ambient = new AmbientLight(0x404040, 0.1); // Low but safe (was 0.02)
         ambient.userData.__ambientLight = true;
         scene.add(ambient);
       }
 
       onLightCreated?.(sun);
-      logger.log('LOADING', 'SUN', `Lighting configured for ${tier} (shadows: ${sun.castShadow})`);
+      console.log(`Lighting configured for ${tier} (Shadows: ${sun.castShadow ? 'ON' : 'OFF'})`);
     };
 
     setupLighting();

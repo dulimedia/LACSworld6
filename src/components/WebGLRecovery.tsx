@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
+import { Html } from '@react-three/drei';
 
 export function WebGLRecovery() {
   const { gl } = useThree();
@@ -23,7 +24,7 @@ export function WebGLRecovery() {
       console.log('✅ WebGL Recovery: Context restored, recovery complete');
       setContextLost(false);
       setRecovering(false);
-      
+
       // Force a full scene refresh
       setTimeout(() => {
         if (gl) {
@@ -45,27 +46,25 @@ export function WebGLRecovery() {
   // Show recovery UI if context is lost
   if (contextLost && recovering) {
     return (
-      <div 
-        style={{
-          position: 'fixed',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          background: 'rgba(0, 0, 0, 0.8)',
-          color: 'white',
-          padding: '20px',
-          borderRadius: '10px',
-          textAlign: 'center',
-          zIndex: 999999,
-          fontFamily: 'system-ui'
-        }}
-      >
-        <div style={{ marginBottom: '10px' }}>🔄</div>
-        <div>Recovering WebGL context...</div>
-        <div style={{ fontSize: '12px', marginTop: '10px', opacity: 0.7 }}>
-          Graphics context was lost, attempting recovery
+      <Html center>
+        <div
+          style={{
+            background: 'rgba(0, 0, 0, 0.8)',
+            color: 'white',
+            padding: '20px',
+            borderRadius: '10px',
+            textAlign: 'center',
+            minWidth: '200px',
+            fontFamily: 'system-ui'
+          }}
+        >
+          <div style={{ marginBottom: '10px', fontSize: '24px' }}>🔄</div>
+          <div style={{ fontWeight: 'bold' }}>Recovering WebGL context...</div>
+          <div style={{ fontSize: '12px', marginTop: '10px', opacity: 0.7 }}>
+            Graphics context was lost, attempting recovery
+          </div>
         </div>
-      </div>
+      </Html>
     );
   }
 

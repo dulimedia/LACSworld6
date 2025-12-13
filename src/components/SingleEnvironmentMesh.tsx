@@ -1,10 +1,12 @@
-import { useGLTF } from '@react-three/drei';
 import React, { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
+import { useLoader, useThree } from '@react-three/fiber';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { configureGLTFLoader } from '../three/loaders';
+import { RendererConfig } from '../config/RendererConfig';
 import { makeFacesBehave } from '../utils/makeFacesBehave';
 import { fixInvertedFacesSelective } from '../utils/fixInvertedFacesSelective';
 import { generateSceneReport, printReport } from '../debug/MeshInspector';
-import { useThree } from '@react-three/fiber';
 import { simplifyGeometryForMobile, shouldSimplifyMesh, optimizeMeshForMobile } from '../utils/simplifyGeometry';
 import { PerfFlags } from '../perf/PerfFlags';
 import { log } from '../utils/debugFlags';
@@ -15,16 +17,17 @@ interface SingleEnvironmentMeshProps {
   tier: string;
 }
 
-const DRACO_DECODER_CDN = 'https://www.gstatic.com/draco/versioned/decoders/1.5.6/';
 const OTHER_ENVIRONMENT_COUNT = 7;
 
 function useDracoGLTF(path: string) {
-  return useGLTF(path, DRACO_DECODER_CDN);
+  const { gl } = useThree();
+  return useLoader(GLTFLoader, path, (loader) => configureGLTFLoader(loader, gl));
 }
 
 export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
   const { gl } = useThree();
-  
+  const mobilePhaseDispatch = React.useRef({ completed: false });
+
   const isMobile = (tier === 'mobile-low');
 
   console.log('🌍 SingleEnvironmentMesh - Tier:', tier, 'isMobile:', isMobile);
@@ -34,17 +37,34 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
     return <MobileEnvironment />;
   }
   console.log('🖥️ DESKTOP PATH: Loading full environment (10 models, 11.5MB)');
-  
-  const accessory = useDracoGLTF(assetUrl('models/environment/accessory concrete.glb'));
-  const hqSidewalk = useDracoGLTF(assetUrl('models/environment/hq sidewalk 2.glb'));
-  const road = useDracoGLTF(assetUrl('models/environment/road.glb'));
-  const transparentBuildings = useDracoGLTF(assetUrl('models/environment/transparent buildings.glb'));
-  const transparentSidewalk = useDracoGLTF(assetUrl('models/environment/transparents sidewalk.glb'));
-  const whiteWall = useDracoGLTF(assetUrl('models/environment/white wall.glb'));
-  const palms = useDracoGLTF(assetUrl('models/environment/palms.glb'));
-  const frame = useDracoGLTF(assetUrl('models/environment/frame-raw-14.glb'));
-  const roof = useDracoGLTF(assetUrl('models/environment/roof and walls.glb'));
-  const stages = useDracoGLTF(assetUrl('models/environment/stages.glb'));
+
+  /* 
+   * OPTIMIZATION: Load all environment assets in PARALLEL.
+   * Passing an array to useLoader triggers simultaneous downloads, verified to prevent waterfall.
+   */
+  const [
+    accessory,
+    hqSidewalk,
+    road,
+    transparentBuildings,
+    transparentSidewalk,
+    whiteWall,
+    palms,
+    frame,
+    roof,
+    stages
+  ] = useLoader(GLTFLoader, [
+    assetUrl('models/environment/accessory concrete.glb'),
+    assetUrl('models/environment/hq sidewalk 2.glb'),
+    assetUrl('models/environment/road.glb'),
+    assetUrl('models/environment/transparent buildings.glb'),
+    assetUrl('models/environment/transparents sidewalk.glb'),
+    assetUrl('models/environment/white wall.glb'),
+    assetUrl('models/environment/palms.glb'),
+    assetUrl('models/environment/frame-raw-14.glb'),
+    assetUrl('models/environment/roof and walls.glb'),
+    assetUrl('models/environment/stages.glb')
+  ], (loader) => configureGLTFLoader(loader, gl));
 
 
 
@@ -68,7 +88,7 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
 
         palms.scene
 
-      ].filter((scene): scene is THREE.Object3D => Boolean(scene)),
+      ].filter((scene): scene is THREE.Group => Boolean(scene)),
 
     [
 
@@ -137,7 +157,7 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
 
 
 
-// Process environment models when loaded
+  // Process environment models when loaded
 
   useEffect(() => {
 
@@ -149,7 +169,7 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
 
       makeFacesBehave(scene, true);
 
-      
+
 
       scene.traverse((child) => {
 
@@ -157,7 +177,7 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
 
           const mesh = child as THREE.Mesh;
 
-          
+
 
           if (mesh.geometry && mesh.geometry.attributes.position && isMobile) {
 
@@ -167,14 +187,28 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
 
           }
 
-          
+
 
           if (shadowsEnabled) {
+            // SAFETY: Exclude materials that cause WebGL crashes in r182
+            const meshNameLower = (mesh.name || '').toLowerCase();
+            const matNameLower = (mesh.material && !Array.isArray(mesh.material) && mesh.material.name)
+              ? mesh.material.name.toLowerCase()
+              : '';
 
-            mesh.castShadow = true;
+            const isRisky = meshNameLower.includes('transparent') ||
+              meshNameLower.includes('glass') ||
+              matNameLower.includes('transparent') ||
+              matNameLower.includes('sidewalk') ||
+              matNameLower.includes('window');
 
-            mesh.receiveShadow = true;
-
+            if (isRisky) {
+              mesh.castShadow = false;
+              mesh.receiveShadow = false;
+            } else {
+              mesh.castShadow = true;
+              mesh.receiveShadow = true;
+            }
           } else if (isMobile) {
 
             mesh.castShadow = false;
@@ -183,7 +217,7 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
 
           }
 
-          
+
 
           if (mesh.material) {
 
@@ -197,21 +231,21 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
 
               }
 
-              
+
 
               const meshNameLower = (mesh.name || '').toLowerCase();
 
-              if (meshNameLower.includes('road') || meshNameLower.includes('plaza') || 
+              if (meshNameLower.includes('road') || meshNameLower.includes('plaza') ||
 
-                  meshNameLower.includes('roof') || meshNameLower.includes('floor') ||
+                meshNameLower.includes('roof') || meshNameLower.includes('floor') ||
 
-                  meshNameLower.includes('ground') || meshNameLower.includes('deck')) {
+                meshNameLower.includes('ground') || meshNameLower.includes('deck')) {
 
                 applyPolygonOffset(mat);
 
               }
 
-              
+
 
               if (isMobile) {
 
@@ -232,18 +266,19 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
                 }
 
                 if (mat.metalnessMap) {
-
                   mat.metalnessMap.dispose();
-
                   mat.metalnessMap = null as any;
-
                 }
-
-                mat.envMapIntensity = 0.6;
-
+                // Use global config for intensity
+                mat.envMapIntensity = RendererConfig.materials.envMapIntensity;
               }
 
-              
+              // Also apply to desktop to ensure darkness
+              if (!isMobile) {
+                mat.envMapIntensity = RendererConfig.materials.envMapIntensity;
+              }
+
+
 
               if (mat.map) mat.map.needsUpdate = true;
 
@@ -259,7 +294,7 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
 
     });
 
-    
+
 
     if (isMobile) {
 
@@ -285,7 +320,7 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
 
 
 
-// Process frame model when loaded
+  // Process frame model when loaded
 
   useEffect(() => {
 
@@ -297,7 +332,7 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
 
       if (isMobile) console.log('dY"? Mobile: Processing Frame with optimizations');
 
-      
+
 
       makeFacesBehave(scene);
 
@@ -305,7 +340,7 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
 
       fixInvertedFacesSelective(scene);
 
-      
+
 
       if (isMobile) {
 
@@ -319,7 +354,7 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
 
             mesh.receiveShadow = false;
 
-            
+
 
             if (shouldSimplifyMesh(mesh, isMobile) && mesh.geometry) {
 
@@ -339,7 +374,7 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
 
       }
 
-      
+
 
       if (isMobile) {
 
@@ -359,7 +394,7 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
 
 
 
-// Process roof model when loaded
+  // Process roof model when loaded
 
   useEffect(() => {
 
@@ -371,11 +406,11 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
 
       if (isMobile) console.log('dY"? Mobile: Processing Roof with optimizations');
 
-      
+
 
       makeFacesBehave(scene);
 
-      
+
 
       scene.traverse((child) => {
 
@@ -383,7 +418,7 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
 
           const mesh = child as THREE.Mesh;
 
-          
+
 
           if (shadowsEnabled) {
 
@@ -391,7 +426,7 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
 
             mesh.receiveShadow = true;
 
-            
+
 
             if (mesh.material) {
 
@@ -417,7 +452,7 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
 
             mesh.receiveShadow = false;
 
-            
+
 
             if (shouldSimplifyMesh(mesh, isMobile) && mesh.geometry) {
 
@@ -437,7 +472,7 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
 
       });
 
-      
+
 
       if (isMobile) {
 
@@ -457,7 +492,7 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
 
 
 
-// Process stages model when loaded
+  // Process stages model when loaded
 
   useEffect(() => {
 
@@ -469,11 +504,11 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
 
       if (isMobile) console.log('dY"? Mobile: Processing Stages with optimizations');
 
-      
+
 
       makeFacesBehave(scene);
 
-      
+
 
       let meshCount = 0;
 
@@ -485,13 +520,13 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
 
           meshCount++;
 
-          
+
 
           mesh.visible = true;
 
           mesh.frustumCulled = false;
 
-          
+
 
           if (mesh.material) {
 
@@ -517,7 +552,7 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
 
           }
 
-          
+
 
           if (shadowsEnabled) {
 
@@ -525,7 +560,7 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
 
             mesh.receiveShadow = true;
 
-            
+
 
             if (mesh.material) {
 
@@ -551,7 +586,7 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
 
             mesh.receiveShadow = false;
 
-            
+
 
             if (shouldSimplifyMesh(mesh, isMobile) && mesh.geometry) {
 
@@ -571,11 +606,11 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
 
       });
 
-      
+
 
       console.log('?o. Stages configured: ' + meshCount + ' meshes, all set to visible');
 
-      
+
 
       if (isMobile) {
 
@@ -587,7 +622,7 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
 
         }
 
-        
+
 
         if (navigator && (navigator as any).deviceMemory) {
 
@@ -595,7 +630,7 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
 
         }
 
-        
+
 
         if (gl && gl.info) {
 
@@ -613,7 +648,7 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
 
         }
 
-        
+
 
         console.log('?o. Mobile: All models loaded and optimized successfully!');
 
@@ -638,23 +673,37 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
 }
 
 function MobileEnvironment() {
+  const { gl } = useThree();
   console.log('📱 MobileEnvironment: Loading full environment (all 10 models)');
-  
-  const road = useDracoGLTF(assetUrl('models/environment/road.glb'));
-  const hqSidewalk = useDracoGLTF(assetUrl('models/environment/hq sidewalk 2.glb'));
-  const whiteWall = useDracoGLTF(assetUrl('models/environment/white wall.glb'));
-  const transparentSidewalk = useDracoGLTF(assetUrl('models/environment/transparents sidewalk.glb'));
-  const transparentBuildings = useDracoGLTF(assetUrl('models/environment/transparent buildings.glb'));
-  const accessory = useDracoGLTF(assetUrl('models/environment/accessory concrete.glb'));
-  const frame = useDracoGLTF(assetUrl('models/environment/frame-raw-14.glb'));
-  const palms = useDracoGLTF(assetUrl('models/environment/palms.glb'));
-  const stages = useDracoGLTF(assetUrl('models/environment/stages.glb'));
-  const roof = useDracoGLTF(assetUrl('models/environment/roof and walls.glb'));
+
+  const [
+    road,
+    hqSidewalk,
+    whiteWall,
+    transparentSidewalk,
+    transparentBuildings,
+    accessory,
+    frame,
+    palms,
+    stages,
+    roof
+  ] = useLoader(GLTFLoader, [
+    assetUrl('models/environment/road.glb'),
+    assetUrl('models/environment/hq sidewalk 2.glb'),
+    assetUrl('models/environment/white wall.glb'),
+    assetUrl('models/environment/transparents sidewalk.glb'),
+    assetUrl('models/environment/transparent buildings.glb'),
+    assetUrl('models/environment/accessory concrete.glb'),
+    assetUrl('models/environment/frame-raw-14.glb'),
+    assetUrl('models/environment/palms.glb'),
+    assetUrl('models/environment/stages.glb'),
+    assetUrl('models/environment/roof and walls.glb')
+  ], (loader) => configureGLTFLoader(loader, gl));
 
 
   const optimizeModel = (scene: THREE.Object3D) => {
     if (!scene) return;
-    
+
     makeFacesBehave(scene, true);
 
     scene.traverse((child) => {
@@ -662,7 +711,7 @@ function MobileEnvironment() {
         const mesh = child as THREE.Mesh;
         mesh.castShadow = false;
         mesh.receiveShadow = false;
-        
+
         if (mesh.material) {
           const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
           materials.forEach((mat: any) => {
