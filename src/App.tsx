@@ -17,18 +17,6 @@ import { GLBManager } from './components/GLBManager';
 import { FrustumCuller } from './components/FrustumCuller';
 import { UnitDetailsPopup } from './components/UnitDetailsPopup';
 // import { SelectedUnitOverlay } from './components/SelectedUnitOverlay';
-import { UnitGlowHighlight } from './components/UnitGlowHighlight';
-import { UnitGlowHighlightFixed } from './components/UnitGlowHighlightFixed';
-import { TransitionMask } from './components/TransitionMask';
-import { CanvasClickHandler } from './components/CanvasClickHandler';
-import { CanvasResizeHandler } from './components/CanvasResizeHandler';
-
-import UnitRequestForm from './components/UnitRequestForm';
-import { Unit3DPopup } from './components/Unit3DPopup';
-import { Unit3DPopupOverlay } from './components/Unit3DPopupOverlay';
-import { SingleUnitRequestForm } from './components/SingleUnitRequestForm';
-import { ShareFloorplanModal } from './components/ShareFloorplanModal';
-import { FloorplanPopup } from './components/FloorplanPopup';
 import { HoverToast } from './ui/HoverToast';
 import { UnitHoverPreview } from './components/UnitHoverPreview';
 import { SafariErrorBoundary } from './components/SafariErrorBoundary';
@@ -109,7 +97,7 @@ function AdaptivePixelRatio() {
   return null;
 }
 
-const CSV_URL = '/unit-data.csv';
+const CSV_URL = assetUrl('unit-data.csv');
 
 // Legacy HDRI Environment component - kept for fallback but not used by default
 const LegacyHDRIEnvironment = React.memo(() => {
