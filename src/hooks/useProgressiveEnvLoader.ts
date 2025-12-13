@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
-import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { logSafari } from '../debug/safariLogger';
 
 export interface EnvModel {
@@ -31,12 +31,13 @@ export function useProgressiveEnvLoader(baseUrl: string = '') {
 
   useEffect(() => {
     let cancelled = false;
-    
+
     logSafari('Progressive loader started', { modelCount: ENV_MODELS.length });
 
     async function loadSequentially() {
       const loader = new GLTFLoader();
       const dracoLoader = new DRACOLoader();
+      // Use Google CDN for reliable decoder loading
       dracoLoader.setDecoderPath(DRACO_DECODER_CDN);
       loader.setDRACOLoader(dracoLoader);
 
@@ -50,7 +51,7 @@ export function useProgressiveEnvLoader(baseUrl: string = '') {
         const fullPath = baseUrl + model.path;
 
         logSafari(`Loading env model ${i + 1}/${ENV_MODELS.length}`, { id: model.id, path: model.path });
-        
+
         setLoadingStatus(prev => ({ ...prev, [model.id]: 'loading' }));
 
         try {
@@ -102,9 +103,9 @@ export function useProgressiveEnvLoader(baseUrl: string = '') {
     };
   }, [baseUrl]);
 
-  return { 
-    loadedCount, 
-    loadingStatus, 
+  return {
+    loadedCount,
+    loadingStatus,
     allLoaded,
     totalModels: ENV_MODELS.length,
     progress: Math.round((loadedCount / ENV_MODELS.length) * 100)
