@@ -46,8 +46,8 @@ export const PerfFlags = (() => {
     isSafariIOS,
     isTouch: isTouchDevice,
 
-    DPR_MAX: isLow ? 1.25 : isBalanced ? 1.3 : 2.0,
-    pixelRatio: isLow ? 1.25 : isBalanced ? 1.3 : 2.0,
+    DPR_MAX: isLow ? 1.25 : isBalanced ? 1.3 : 1.5,
+    pixelRatio: isLow ? 1.25 : isBalanced ? 1.3 : 1.5,
 
     // 🔥 Texture & shadow caps - no shadows at all on mobile
     maxTextureSize: isLow ? 1024 : isBalanced ? 2048 : 4096,

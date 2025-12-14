@@ -4,8 +4,54 @@ import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { resizedTexturesLog } from '../utils/textureUtils';
 
-// RenderTarget logging disabled to prevent crash
-const renderTargetLogs: string[] = ['Render Target logging disabled in strict mode'];
+// Track render targets safely
+const activeRenderTargets = new Set<THREE.WebGLRenderTarget>();
+
+// Hook into WebGLRenderTarget to track creation/disposal
+const originalDispose = THREE.WebGLRenderTarget.prototype.dispose;
+THREE.WebGLRenderTarget.prototype.dispose = function () {
+    activeRenderTargets.delete(this);
+    originalDispose.call(this);
+};
+
+// We can't easily hook the constructor without proxies, but we can track them 
+// if we monkey-patch the clone or copy, but easiest is to just rely on 
+// checking the scene or relying on manual registration if we had a system.
+// actually, for this specific request, we can try to hook into the constructor functionality
+// by wrapping the class, but that is risky.
+//
+// Alternative: Iterate renderer.info in a deeper way if possible? 
+// No.
+// Let's safe-patch the constructor if possible, or just accept we might miss some 
+// if we don't catch them at creation.
+//
+// BETTER APPROACH: Just inspect known targets if we can't patch safely.
+// But the user specifically asked for a list.
+//
+// Let's try to patch the constructor conservatively.
+const OriginalRenderTarget = THREE.WebGLRenderTarget;
+// @ts-ignore
+THREE.WebGLRenderTarget = class extends OriginalRenderTarget {
+    constructor(width?: number, height?: number, options?: THREE.RenderTargetOptions) {
+        super(width, height, options);
+        activeRenderTargets.add(this);
+    }
+};
+// Copy prototype to ensure instanceof works
+// @ts-ignore
+THREE.WebGLRenderTarget.prototype = OriginalRenderTarget.prototype;
+// @ts-ignore
+THREE.WebGLRenderTarget.prototype.constructor = THREE.WebGLRenderTarget;
+
+const getRenderTargetLogs = () => {
+    const logs: string[] = [];
+    logs.push(`Active Render Targets: ${activeRenderTargets.size}`);
+    activeRenderTargets.forEach(rt => {
+        logs.push(`- ${rt.width}x${rt.height} [${rt.texture.format}]`);
+    });
+    if (activeRenderTargets.size === 0) logs.push("No active render targets detected (or created before profiler init).");
+    return logs;
+};
 
 export const MemoryProfiler: React.FC = () => {
     const { gl, scene } = useThree();
@@ -81,7 +127,7 @@ export const MemoryProfiler: React.FC = () => {
             }
 
             reportLines.push(`\n--- RENDER TARGETS ---`);
-            reportLines.push(...renderTargetLogs);
+            reportLines.push(...getRenderTargetLogs());
 
             // Texture Inventory
             const textures = new Map<string, {

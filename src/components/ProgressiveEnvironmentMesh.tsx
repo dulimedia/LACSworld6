@@ -7,6 +7,7 @@ import { assetUrl } from '../lib/assets';
 import { logSafari } from '../debug/safariLogger';
 import * as THREE from 'three';
 import { makeFacesBehave } from '../utils/makeFacesBehave';
+import { optimizeMaterialTextures } from '../utils/textureUtils';
 
 function useDracoGLTF(path: string) {
   const { gl } = useThree();
@@ -41,6 +42,9 @@ export function ProgressiveEnvironmentMesh() {
         if (mesh.material) {
           const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
           materials.forEach((mat: any) => {
+            // Forced texture resizing (fixes Frame 4K issues)
+            optimizeMaterialTextures(mat, 2048);
+
             if (mat.normalMap) {
               mat.normalMap.dispose();
               mat.normalMap = null;
