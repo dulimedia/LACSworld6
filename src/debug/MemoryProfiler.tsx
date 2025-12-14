@@ -43,8 +43,13 @@ export const MemoryProfiler: React.FC = () => {
             window.performance?.memory?.usedJSHeapSize
                 ? Math.round(window.performance.memory.usedJSHeapSize / 1024 / 1024) + ' MB'
                 : 'N/A'}`);
+        // Check if renderer is WebGL before accessing WebGL-specific properties
+        const isWebGL = (gl as any).isWebGLRenderer;
+        const maxTexSize = isWebGL ? gl.getParameter(gl.MAX_TEXTURE_SIZE) : 'Unknown (WebGPU)';
+
         reportLines.push(`GL Info: Textures=${gl.info.memory.textures}, Geometries=${gl.info.memory.geometries}`);
-        reportLines.push(`Max Texture Size: ${gl.getParameter(gl.MAX_TEXTURE_SIZE)}`);
+        reportLines.push(`Max Texture Size: ${maxTexSize}`);
+        reportLines.push(`Renderer Type: ${isWebGL ? 'WebGL' : 'WebGPU'}`);
         reportLines.push(`\n--- RENDER TARGETS ---`);
         reportLines.push(...renderTargetLogs);
 
@@ -129,6 +134,7 @@ export const MemoryProfiler: React.FC = () => {
         if (dupesFound === 0) reportLines.push('No obvious duplicate image sources found.');
 
         setReport(reportLines.join('\n'));
+        console.warn('📸 MEMORY RECEIPT PRINTED BELOW:');
         console.log(reportLines.join('\n'));
     }, [gl, scene]);
 
