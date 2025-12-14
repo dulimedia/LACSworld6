@@ -1,28 +1,9 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
-// Global logs for RenderTargets to capture early allocations
-const renderTargetLogs: string[] = [];
-const originalRenderTarget = THREE.WebGLRenderTarget;
-
-// Monkey-patch WebGLRenderTarget to track allocations
-// @ts-ignore
-THREE.WebGLRenderTarget = class extends originalRenderTarget {
-    constructor(width: number, height: number, options: any) {
-        super(width, height, options);
-        const msg = `[RT] New Target: ${width}x${height} (DPR: ${window.devicePixelRatio})`;
-        renderTargetLogs.push(msg);
-        console.log(msg);
-    }
-
-    setSize(width: number, height: number, depth?: number) {
-        super.setSize(width, height, depth);
-        const msg = `[RT] Resize: ${width}x${height} (DPR: ${window.devicePixelRatio})`;
-        renderTargetLogs.push(msg);
-        console.log(msg);
-    }
-};
+// RenderTarget logging disabled to prevent crash
+const renderTargetLogs: string[] = ['Render Target logging disabled in strict mode'];
 
 export const MemoryProfiler: React.FC = () => {
     const { gl, scene } = useThree();
