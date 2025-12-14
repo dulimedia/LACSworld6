@@ -12,6 +12,7 @@ import { installDegradePolicy } from '../perf/FrameGovernor';
 import { log, SAFE } from '../lib/debug';
 import { MobileDiagnostics } from '../debug/mobileDiagnostics';
 import { PerfFlags } from '../perf/PerfFlags';
+import { MemoryProfiler } from '../debug/MemoryProfiler';
 
 export type RootCanvasProps = Omit<CanvasProps, 'children' | 'gl' | 'dpr'> & {
   children: ReactNode | ((tier: Tier) => ReactNode);
@@ -37,9 +38,9 @@ function Fallback({ reason }: { reason?: string }) {
       padding: '20px',
       fontFamily: 'system-ui, -apple-system, sans-serif'
     }}>
-      <div style={{ 
-        background: 'rgba(0,0,0,0.2)', 
-        padding: '30px', 
+      <div style={{
+        background: 'rgba(0,0,0,0.2)',
+        padding: '30px',
         borderRadius: '12px',
         maxWidth: '500px',
         textAlign: 'center'
@@ -66,7 +67,7 @@ function Fallback({ reason }: { reason?: string }) {
             {reason}
           </div>
         )}
-        <button 
+        <button
           style={{
             padding: '12px 24px',
             fontSize: '16px',
@@ -99,12 +100,12 @@ class CanvasErrorBoundary extends Component<any, { err?: any }> {
     console.error('Error stack:', err?.stack);
     console.error('Component stack:', errorInfo?.componentStack);
     log.err('CanvasErrorBoundary caught error', err);
-    MobileDiagnostics.error('root-canvas', 'Canvas error boundary triggered', { 
+    MobileDiagnostics.error('root-canvas', 'Canvas error boundary triggered', {
       message: String(err?.message || err),
       stack: err?.stack,
       componentStack: errorInfo?.componentStack
     });
-    
+
     alert(`CANVAS CRASH: ${err?.message || err}`);
   }
   render() {
@@ -114,7 +115,7 @@ class CanvasErrorBoundary extends Component<any, { err?: any }> {
 
 function CanvasWatchdog({ children }: { children: ReactNode }) {
   const [ok, setOk] = useState(true);
-  
+
   useEffect(() => {
     const timer = setTimeout(() => {
       const canvas = document.querySelector('canvas');
@@ -177,7 +178,7 @@ export function RootCanvas({ children, gl: glProp, onTierChange, ...canvasProps 
 
     log.info('Canvas element ready, creating renderer...');
     canvasRef.current = canvas;
-    
+
     canvas.addEventListener('webglcontextlost', (e: Event) => {
       e.preventDefault();
       console.error('🚨🚨🚨 WEBGL CONTEXT LOST - THIS IS THE CRASH! 🚨🚨🚨');
@@ -193,11 +194,11 @@ export function RootCanvas({ children, gl: glProp, onTierChange, ...canvasProps 
       console.error('Call stack at context loss:', new Error().stack);
       log.warn('webglcontextlost event');
       MobileDiagnostics.warn('root-canvas', 'webglcontextlost');
-      
+
       // Alert user about the crash
       alert('WebGL context lost! This is likely the cause of the white screen crash.');
     }, false);
-    
+
     canvas.addEventListener('webglcontextrestored', () => {
       console.warn('✅ WEBGL CONTEXT RESTORED');
       console.log('Attempting to recover from context loss...');
@@ -224,7 +225,7 @@ export function RootCanvas({ children, gl: glProp, onTierChange, ...canvasProps 
         type: result.type,
         tier,
       });
-      
+
       const caps = result.renderer.capabilities as any;
       log.info('Renderer created', {
         type: result.type,
@@ -234,7 +235,7 @@ export function RootCanvas({ children, gl: glProp, onTierChange, ...canvasProps 
         maxTextureSize: caps.maxTextureSize,
         SAFE,
       });
-      
+
       installDegradePolicy({
         setShadows: (v) => result.renderer.shadowMap.enabled = v,
         setBloom: (v) => log.info('[DegradePolicy] Bloom:', v),
@@ -243,7 +244,7 @@ export function RootCanvas({ children, gl: glProp, onTierChange, ...canvasProps 
         setSSGI: (v) => log.info('[DegradePolicy] SSGI:', v),
         setMaxAnisotropy: (n) => log.info('[DegradePolicy] Max Anisotropy:', n),
       });
-      
+
       return result.renderer;
     } catch (err) {
       log.err('Renderer creation failed', err);
@@ -272,7 +273,7 @@ export function RootCanvas({ children, gl: glProp, onTierChange, ...canvasProps 
     isMobile,
     frameloop: SAFE || isMobile ? 'demand' : canvasProps.frameloop || 'always',
   });
-  
+
   return (
     <CanvasErrorBoundary>
       <CanvasWatchdog>
@@ -288,6 +289,7 @@ export function RootCanvas({ children, gl: glProp, onTierChange, ...canvasProps 
           <MobilePerfScope />
           <AdaptivePerf tier={tier} />
           <RendererInfo />
+          <MemoryProfiler />
           {resolvedChildren}
         </Canvas>
       </CanvasWatchdog>
