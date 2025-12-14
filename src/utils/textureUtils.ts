@@ -99,54 +99,51 @@ export function resizeTexture(texture: THREE.Texture, maxSize: number = TEXTURE_
     return newTexture;
 }
 
+const ALL_TEXTURE_KEYS = [
+    'map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap',
+    'emissiveMap', 'alphaMap', 'lightMap', 'bumpMap', 'displacementMap',
+    'specularMap', 'envMap', 'clearcoatMap', 'clearcoatNormalMap',
+    'clearcoatRoughnessMap', 'sheenColorMap', 'sheenRoughnessMap',
+    'transmissionMap', 'thicknessMap', 'iridescenceMap', 'iridescenceThicknessMap'
+] as const;
+
 /**
  * Safely optimize a material's textures
  */
 export function optimizeMaterialTextures(material: THREE.Material, maxSize: number = 2048) {
     if (!material) return;
+    const mat = material as any;
 
-    const ALL_TEXTURE_KEYS = [
-        'map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap',
-        'emissiveMap', 'alphaMap', 'lightMap', 'bumpMap', 'displacementMap',
-        'specularMap', 'envMap', 'clearcoatMap', 'clearcoatNormalMap',
-        'clearcoatRoughnessMap', 'sheenColorMap', 'sheenRoughnessMap',
-        'transmissionMap', 'thicknessMap', 'iridescenceMap', 'iridescenceThicknessMap'
-    ] as const;
+    ALL_TEXTURE_KEYS.forEach(mapName => {
+        if (mat[mapName]) {
+            const original = mat[mapName];
 
-    export function optimizeMaterialTextures(material: THREE.Material, maxSize: number = 2048) {
-        if (!material) return;
-        const mat = material as any;
+            // Check if it is actually a texture
+            if (!original.isTexture) return;
 
-        ALL_TEXTURE_KEYS.forEach(mapName => {
-            if (mat[mapName]) {
-                const original = mat[mapName];
+            // Check if already processed
+            if (original.userData?.resized) return;
 
-                // Check if it is actually a texture
-                if (!original.isTexture) return;
+            const resized = resizeTexture(original, maxSize);
 
-                // Check if already processed
-                if (original.userData?.resized) return;
+            if (resized !== original) {
+                console.log(`✅ [Material: ${mat.name}] Replaced ${mapName} with resized version`);
+                mat[mapName] = resized;
+                mat.needsUpdate = true;
 
-                const resized = resizeTexture(original, maxSize);
-
-                if (resized !== original) {
-                    console.log(`✅ [Material: ${mat.name}] Replaced ${mapName} with resized version`);
-                    mat[mapName] = resized;
-                    mat.needsUpdate = true;
-
-                    // Dispose original
-                    try {
-                        original.dispose();
-                        resizedTexturesLog.push(`[DISPOSE] Disposed original ${mapName} for ${mat.name}`);
-                    } catch (e) {
-                        console.warn(`[DISPOSE FAIL] Could not dispose ${mapName} on ${mat.name}`, e);
-                    }
-                } else {
-                    // Even if not resized, log it was checked
-                    // console.log(`[CHECKED] ${mapName} on ${mat.name} - OK`);
+                // Dispose original
+                try {
+                    original.dispose();
+                    resizedTexturesLog.push(`[DISPOSE] Disposed original ${mapName} for ${mat.name}`);
+                } catch (e) {
+                    console.warn(`[DISPOSE FAIL] Could not dispose ${mapName} on ${mat.name}`, e);
                 }
+            } else {
+                // Even if not resized, log it was checked
+                // console.log(`[CHECKED] ${mapName} on ${mat.name} - OK`);
             }
-        });
+        }
+    });
 
-        mat.needsUpdate = true;
-    }
+    mat.needsUpdate = true;
+}
