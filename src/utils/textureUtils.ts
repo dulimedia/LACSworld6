@@ -105,42 +105,48 @@ export function resizeTexture(texture: THREE.Texture, maxSize: number = TEXTURE_
 export function optimizeMaterialTextures(material: THREE.Material, maxSize: number = 2048) {
     if (!material) return;
 
-    const mat = material as any;
-    const maps = [
-        'map',
-        'normalMap',
-        'roughnessMap',
-        'metalnessMap',
-        'emissiveMap',
-        'aoMap',
-        'alphaMap'
-    ];
+    const ALL_TEXTURE_KEYS = [
+        'map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap',
+        'emissiveMap', 'alphaMap', 'lightMap', 'bumpMap', 'displacementMap',
+        'specularMap', 'envMap', 'clearcoatMap', 'clearcoatNormalMap',
+        'clearcoatRoughnessMap', 'sheenColorMap', 'sheenRoughnessMap',
+        'transmissionMap', 'thicknessMap', 'iridescenceMap', 'iridescenceThicknessMap'
+    ] as const;
 
-    maps.forEach(mapName => {
-        if (mat[mapName]) {
-            const original = mat[mapName];
+    export function optimizeMaterialTextures(material: THREE.Material, maxSize: number = 2048) {
+        if (!material) return;
+        const mat = material as any;
 
-            // Check UUID to see if we already processed this specific texture instance
-            if (original.userData?.resized) {
-                return;
+        ALL_TEXTURE_KEYS.forEach(mapName => {
+            if (mat[mapName]) {
+                const original = mat[mapName];
+
+                // Check if it is actually a texture
+                if (!original.isTexture) return;
+
+                // Check if already processed
+                if (original.userData?.resized) return;
+
+                const resized = resizeTexture(original, maxSize);
+
+                if (resized !== original) {
+                    console.log(`✅ [Material: ${mat.name}] Replaced ${mapName} with resized version`);
+                    mat[mapName] = resized;
+                    mat.needsUpdate = true;
+
+                    // Dispose original
+                    try {
+                        original.dispose();
+                        resizedTexturesLog.push(`[DISPOSE] Disposed original ${mapName} for ${mat.name}`);
+                    } catch (e) {
+                        console.warn(`[DISPOSE FAIL] Could not dispose ${mapName} on ${mat.name}`, e);
+                    }
+                } else {
+                    // Even if not resized, log it was checked
+                    // console.log(`[CHECKED] ${mapName} on ${mat.name} - OK`);
+                }
             }
+        });
 
-            const resized = resizeTexture(original, maxSize);
-            if (resized !== original) {
-                console.log(`✅ Replaced texture map ${mapName} on material ${mat.name}`);
-                mat[mapName] = resized;
-                mat.needsUpdate = true; // Flag material for update
-
-                // Dispose original to actually save memory
-                // WARNING: If this texture is used by other materials, they will break unless they also update
-                // For the massive 8K textures, we MUST dispose them.
-                try {
-                    original.dispose();
-                    resizedTexturesLog.push(`[DISPOSE] Disposed original texture for ${mapName} on ${mat.name}`);
-                } catch (e) { console.warn('Failed to dispose texture', e); }
-            }
-        }
-    });
-
-    mat.needsUpdate = true;
-}
+        mat.needsUpdate = true;
+    }
