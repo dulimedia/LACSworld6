@@ -26,116 +26,140 @@ export const MemoryProfiler: React.FC = () => {
         const heap = window.performance?.memory ? Math.round(window.performance.memory.usedJSHeapSize / 1024 / 1024) + ' MB' : 'N/A';
 
         setStats({
-            geometries: gl.info.memory.geometries,
-            textures: gl.info.memory.textures,
-            drawCalls: gl.info.render.calls,
-            triangles: gl.info.render.triangles,
+            // @ts-ignore
+            geometries: gl.info?.memory?.geometries ?? 0,
+            // @ts-ignore
+            textures: gl.info?.memory?.textures ?? 0,
+            // @ts-ignore
+            drawCalls: gl.info?.render?.calls ?? 0,
+            // @ts-ignore
+            triangles: gl.info?.render?.triangles ?? 0,
             jsHeap: heap
         });
     });
 
     // Step 3 & 4: Dump Inventory & Duplicates
     const generateReport = useCallback(() => {
-        const reportLines: string[] = [];
-        reportLines.push(`--- MEMORY PROFILE REPORT ---`);
-        reportLines.push(`Timestamp: ${new Date().toISOString()}`);
-        reportLines.push(`JS Heap: ${// @ts-ignore
-            window.performance?.memory?.usedJSHeapSize
-                ? Math.round(window.performance.memory.usedJSHeapSize / 1024 / 1024) + ' MB'
-                : 'N/A'}`);
-        // Check if renderer is WebGL before accessing WebGL-specific properties
-        const isWebGL = (gl as any).isWebGLRenderer;
-        const maxTexSize = isWebGL ? gl.getParameter(gl.MAX_TEXTURE_SIZE) : 'Unknown (WebGPU)';
+        try {
+            const reportLines: string[] = [];
+            reportLines.push(`--- MEMORY PROFILE REPORT ---`);
+            reportLines.push(`Timestamp: ${new Date().toISOString()}`);
 
-        reportLines.push(`GL Info: Textures=${gl.info.memory.textures}, Geometries=${gl.info.memory.geometries}`);
-        reportLines.push(`Max Texture Size: ${maxTexSize}`);
-        reportLines.push(`Renderer Type: ${isWebGL ? 'WebGL' : 'WebGPU'}`);
-        reportLines.push(`\n--- RENDER TARGETS ---`);
-        reportLines.push(...renderTargetLogs);
-
-        // Texture Inventory
-        const textures = new Map<string, {
-            uuid: string,
-            src: string,
-            size: number,
-            w: number,
-            h: number,
-            refs: number,
-            names: string[]
-        }>();
-
-        scene.traverse((obj) => {
-            if (!(obj as any).isMesh) return;
-            const mesh = obj as THREE.Mesh;
-            const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-
-            materials.forEach((mat) => {
-                if (!mat) return;
-                ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'emissiveMap', 'aoMap', 'alphaMap', 'envMap'].forEach((mapType) => {
+            // Safe Heap Access
+            let heap = 'N/A';
+            try {
+                // @ts-ignore
+                if (window.performance?.memory?.usedJSHeapSize) {
                     // @ts-ignore
-                    const tex = mat[mapType];
-                    if (tex && tex.isTexture) {
-                        const image = tex.image;
-                        if (image) {
-                            const w = image.width || 0;
-                            const h = image.height || 0;
-                            // Approx size: w * h * 4 bytes * 1.33 for mipmaps
-                            const estimatedSize = Math.round((w * h * 4 * 1.33) / 1024 / 1024 * 100) / 100; // in MB
+                    heap = Math.round(window.performance.memory.usedJSHeapSize / 1024 / 1024) + ' MB';
+                }
+            } catch (e) { heap = 'Error reading heap'; }
+            reportLines.push(`JS Heap: ${heap}`);
 
-                            const key = tex.uuid;
-                            if (!textures.has(key)) {
-                                textures.set(key, {
-                                    uuid: tex.uuid,
-                                    src: image.src ? image.src.substring(image.src.length - 50) : 'Embedded/Buffer',
-                                    size: estimatedSize,
-                                    w, h,
-                                    refs: 0,
-                                    names: []
-                                });
+            // Safe GL Info Access
+            try {
+                const info = gl.info;
+                // @ts-ignore
+                reportLines.push(`GL Info: Textures=${info?.memory?.textures ?? '?'}, Geometries=${info?.memory?.geometries ?? '?'}`);
+                // @ts-ignore
+                reportLines.push(`DrawCalls=${info?.render?.calls ?? '?'}, Triangles=${info?.render?.triangles ?? '?'}`);
+            } catch (e) {
+                reportLines.push('Could not read gl.info');
+            }
+
+            // Removed risky gl.getParameter call that crashes WebGPU
+            reportLines.push(`Renderer Class: ${gl.constructor.name}`);
+
+            reportLines.push(`\n--- RENDER TARGETS ---`);
+            reportLines.push(...renderTargetLogs);
+
+            // Texture Inventory
+            const textures = new Map<string, {
+                uuid: string,
+                src: string,
+                size: number,
+                w: number,
+                h: number,
+                refs: number,
+                names: string[]
+            }>();
+
+            scene.traverse((obj) => {
+                if (!(obj as any).isMesh) return;
+                const mesh = obj as THREE.Mesh;
+                const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+
+                materials.forEach((mat) => {
+                    if (!mat) return;
+                    ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'emissiveMap', 'aoMap', 'alphaMap', 'envMap'].forEach((mapType) => {
+                        // @ts-ignore
+                        const tex = mat[mapType];
+                        if (tex && tex.isTexture) {
+                            const image = tex.image;
+                            if (image) {
+                                const w = image.width || 0;
+                                const h = image.height || 0;
+                                // Approx size: w * h * 4 bytes * 1.33 for mipmaps
+                                const estimatedSize = Math.round((w * h * 4 * 1.33) / 1024 / 1024 * 100) / 100; // in MB
+
+                                const key = tex.uuid;
+                                if (!textures.has(key)) {
+                                    textures.set(key, {
+                                        uuid: tex.uuid,
+                                        src: image.src ? image.src.substring(image.src.length - 50) : 'Embedded/Buffer',
+                                        size: estimatedSize,
+                                        w, h,
+                                        refs: 0,
+                                        names: []
+                                    });
+                                }
+                                const entry = textures.get(key)!;
+                                entry.refs++;
+                                if (entry.names.length < 3) entry.names.push(mesh.name || 'unnamed');
                             }
-                            const entry = textures.get(key)!;
-                            entry.refs++;
-                            if (entry.names.length < 3) entry.names.push(mesh.name || 'unnamed');
                         }
-                    }
+                    });
                 });
             });
-        });
 
-        const sortedTextures = Array.from(textures.values()).sort((a, b) => b.size - a.size);
-        const totalTextureMem = sortedTextures.reduce((acc, item) => acc + item.size, 0);
+            const sortedTextures = Array.from(textures.values()).sort((a, b) => b.size - a.size);
+            const totalTextureMem = sortedTextures.reduce((acc, item) => acc + item.size, 0);
 
-        reportLines.push(`\n--- TEXTURE INVENTORY ---`);
-        reportLines.push(`Total Unique Textures Found: ${sortedTextures.length}`);
-        reportLines.push(`Estimated Total Texture Memory: ${totalTextureMem.toFixed(2)} MB`);
-        reportLines.push(`\n[Top 30 Largest Textures]`);
+            reportLines.push(`\n--- TEXTURE INVENTORY ---`);
+            reportLines.push(`Total Unique Textures Found: ${sortedTextures.length}`);
+            reportLines.push(`Estimated Total Texture Memory: ${totalTextureMem.toFixed(2)} MB`);
+            reportLines.push(`\n[Top 30 Largest Textures]`);
 
-        sortedTextures.slice(0, 30).forEach((t, i) => {
-            reportLines.push(`${i + 1}. [${t.size} MB] ${t.w}x${t.h} - ${t.src} (${t.refs} refs) on [${t.names.join(', ')}]`);
-        });
+            sortedTextures.slice(0, 30).forEach((t, i) => {
+                reportLines.push(`${i + 1}. [${t.size} MB] ${t.w}x${t.h} - ${t.src} (${t.refs} refs) on [${t.names.join(', ')}]`);
+            });
 
-        // Duplicate Check (by src)
-        const srcMap = new Map<string, string[]>();
-        sortedTextures.forEach(t => {
-            if (t.src !== 'Embedded/Buffer') {
-                if (!srcMap.has(t.src)) srcMap.set(t.src, []);
-                srcMap.get(t.src)?.push(t.uuid);
-            }
-        });
+            // Duplicate Check (by src)
+            const srcMap = new Map<string, string[]>();
+            sortedTextures.forEach(t => {
+                if (t.src !== 'Embedded/Buffer') {
+                    if (!srcMap.has(t.src)) srcMap.set(t.src, []);
+                    srcMap.get(t.src)?.push(t.uuid);
+                }
+            });
 
-        reportLines.push(`\n--- DUPLICATE SRC CHECK ---`);
-        let dupesFound = 0;
-        srcMap.forEach((uuids, src) => {
-            if (uuids.length > 1) {
-                reportLines.push(`DUPLICATE: ${src} loaded as ${uuids.length} separate Texture objects.`);
-                dupesFound++;
-            }
-        });
-        if (dupesFound === 0) reportLines.push('No obvious duplicate image sources found.');
+            reportLines.push(`\n--- DUPLICATE SRC CHECK ---`);
+            let dupesFound = 0;
+            srcMap.forEach((uuids, src) => {
+                if (uuids.length > 1) {
+                    reportLines.push(`DUPLICATE: ${src} loaded as ${uuids.length} separate Texture objects.`);
+                    dupesFound++;
+                }
+            });
+            if (dupesFound === 0) reportLines.push('No obvious duplicate image sources found.');
 
-        setReport(reportLines.join('\n'));
-        console.warn('📸 MEMORY RECEIPT PRINTED BELOW:');
-        console.log(reportLines.join('\n'));
+            setReport(reportLines.join('\n'));
+            console.warn('📸 MEMORY RECEIPT PRINTED BELOW:');
+            console.log(reportLines.join('\n'));
+        } catch (err: any) {
+            console.error('Error generating memory report:', err);
+            setReport(`ERROR GENERATING REPORT:\n${err?.message}\n${err?.stack}`);
+        }
     }, [gl, scene]);
 
     if (!isVisible && !report) return (
