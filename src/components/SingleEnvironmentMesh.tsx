@@ -349,31 +349,28 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
       if (isMobile) {
 
         scene.traverse((child) => {
-
           if ((child as THREE.Mesh).isMesh) {
-
             const mesh = child as THREE.Mesh;
 
-            mesh.castShadow = false;
-
-            mesh.receiveShadow = false;
-
-
-
-            if (shouldSimplifyMesh(mesh, isMobile) && mesh.geometry) {
-
-              const originalVerts = mesh.geometry.attributes.position.count;
-
-              mesh.geometry = simplifyGeometryForMobile(mesh.geometry, 0.7);
-
-              const newVerts = mesh.geometry.attributes.position.count;
-
-              console.log(`dY"% Frame simplified ${mesh.name}: ${originalVerts} ?+' ${newVerts} vertices`);
-
+            // FORCE TEXTURE OPTIMIZATION FOR FRAME
+            if (mesh.material) {
+              const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+              materials.forEach(mat => optimizeMaterialTextures(mat, 2048));
             }
 
-          }
+            if (isMobile) {
+              mesh.castShadow = false;
+              mesh.receiveShadow = false;
 
+              if (shouldSimplifyMesh(mesh, isMobile) && mesh.geometry) {
+                // ... existing simplification logic ...
+                const originalVerts = mesh.geometry.attributes.position.count;
+                mesh.geometry = simplifyGeometryForMobile(mesh.geometry, 0.7);
+                const newVerts = mesh.geometry.attributes.position.count;
+                console.log(`dY"% Frame simplified ${mesh.name}: ${originalVerts} ?+' ${newVerts} vertices`);
+              }
+            }
+          }
         });
 
       }
@@ -417,20 +414,18 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
 
 
       scene.traverse((child) => {
-
         if ((child as THREE.Mesh).isMesh) {
-
           const mesh = child as THREE.Mesh;
 
-
+          // FORCE TEXTURE OPTIMIZATION FOR ROOF
+          if (mesh.material) {
+            const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+            materials.forEach(mat => optimizeMaterialTextures(mat, 2048));
+          }
 
           if (shadowsEnabled) {
-
             mesh.castShadow = true;
-
             mesh.receiveShadow = true;
-
-
 
             if (mesh.material) {
 
@@ -533,10 +528,10 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
 
 
           if (mesh.material) {
-
             const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-
             materials.forEach((mat: any) => {
+              // FORCE TEXTURE OPTIMIZATION FOR STAGES
+              optimizeMaterialTextures(mat, 2048);
 
               mat.visible = true;
 
