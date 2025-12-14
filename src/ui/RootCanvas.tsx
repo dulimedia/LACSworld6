@@ -289,7 +289,8 @@ export function RootCanvas({ children, gl: glProp, onTierChange, ...canvasProps 
           <MobilePerfScope />
           <AdaptivePerf tier={tier} />
           <RendererInfo />
-          <MemoryProfiler />
+          {/* MemoryProfiler disabled after successful optimization */}
+          {/* <MemoryProfiler /> */}
           {resolvedChildren}
         </Canvas>
       </CanvasWatchdog>
