@@ -11,6 +11,9 @@ const TEXTURE_OPTS = {
     // For offscreen canvas resize, we just control dimensions.
 };
 
+// Global log of resized textures for the Memory Profiler to consume
+export const resizedTexturesLog: string[] = [];
+
 /**
  * Resizes a texture if it exceeds the maximum dimensions.
  * Returns a new CanvasTexture (or the original if no resize needed).
@@ -55,6 +58,7 @@ export function resizeTexture(texture: THREE.Texture, maxSize: number = TEXTURE_
     }
 
     console.log(`📉 Resizing texture ${texture.name || 'unnamed'} from ${image.width}x${image.height} to ${width}x${height}`);
+    resizedTexturesLog.push(`[RESIZE] ${texture.name || 'unnamed'} (${image.width}x${image.height}) -> ${width}x${height}`);
 
     // Create an offscreen canvas
     const canvas = document.createElement('canvas');
@@ -132,6 +136,7 @@ export function optimizeMaterialTextures(material: THREE.Material, maxSize: numb
                 // For the massive 8K textures, we MUST dispose them.
                 try {
                     original.dispose();
+                    resizedTexturesLog.push(`[DISPOSE] Disposed original texture for ${mapName} on ${mat.name}`);
                 } catch (e) { console.warn('Failed to dispose texture', e); }
             }
         }

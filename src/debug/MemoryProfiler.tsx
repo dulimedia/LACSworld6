@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
+import { resizedTexturesLog } from '../utils/textureUtils';
 
 // RenderTarget logging disabled to prevent crash
 const renderTargetLogs: string[] = ['Render Target logging disabled in strict mode'];
@@ -67,8 +68,17 @@ export const MemoryProfiler: React.FC = () => {
                 reportLines.push('Could not read gl.info');
             }
 
-            // Removed risky gl.getParameter call that crashes WebGPU
             reportLines.push(`Renderer Class: ${gl.constructor.name}`);
+
+            reportLines.push(`\n--- RESIZE LOG (v2.2 ACTIVE) ---`);
+            if (resizedTexturesLog.length > 0) {
+                reportLines.push(`Count: ${resizedTexturesLog.length} textures/materials processed`);
+                // Show first 20 entries
+                reportLines.push(...resizedTexturesLog.slice(0, 20));
+                if (resizedTexturesLog.length > 20) reportLines.push(`... and ${resizedTexturesLog.length - 20} more`);
+            } else {
+                reportLines.push("No resizes recorded yet. (Did models load? Are textures > 2048?)");
+            }
 
             reportLines.push(`\n--- RENDER TARGETS ---`);
             reportLines.push(...renderTargetLogs);
@@ -220,7 +230,7 @@ export const MemoryProfiler: React.FC = () => {
                         pointerEvents: 'auto'
                     }}>
                         <div style={{ marginBottom: '10px', display: 'flex', justifyContent: 'space-between' }}>
-                            <strong>MEMORY RECEIPT</strong>
+                            <strong>MEMORY RECEIPT (v2.2 - 2048px Cap)</strong>
                             <button onClick={() => setReport('')}>Close</button>
                         </div>
                         <textarea
