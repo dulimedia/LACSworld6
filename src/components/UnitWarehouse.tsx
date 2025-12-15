@@ -43,23 +43,16 @@ class UnitWarehouseErrorBoundary extends React.Component<{ children: React.React
 
 
 function BoundingSphere({ onBoundingSphereData }: { onBoundingSphereData?: (data: { center: THREE.Vector3, radius: number }) => void }) {
-  const { gl } = useThree();
-  const { scene } = useLoader(GLTFLoader, assetUrl('models/environment/road.glb'), (loader) => configureGLTFLoader(loader, gl));
-
+  // Hardcoded bounding sphere for LACS Campus (replacing road.glb loader)
   React.useEffect(() => {
-    if (scene) {
-
-      const box = new THREE.Box3().setFromObject(scene);
-      const center = box.getCenter(new THREE.Vector3());
-      const size = box.getSize(new THREE.Vector3());
-      const radius = Math.max(size.x, size.y, size.z) / 2;
-
-
-      if (onBoundingSphereData) {
-        onBoundingSphereData({ center, radius });
-      }
+    if (onBoundingSphereData) {
+      // Approximate values based on previous road.glb
+      onBoundingSphereData({
+        center: new THREE.Vector3(0, 0, 0),
+        radius: 400
+      });
     }
-  }, [scene, onBoundingSphereData]);
+  }, [onBoundingSphereData]);
 
   return null;
 }
@@ -590,43 +583,9 @@ const UnitWarehouseComponent: React.FC<UnitWarehouseProps> = ({
   const shadowsComputed = useRef(false);
 
   const allModels = useMemo(() => {
-
-    const folder = 'environment';
-
-
-
-    const models = [
-
-      `${folder}/accessory concrete.glb`,
-
-      `${folder}/hq sidewalk 2.glb`,
-
-      `${folder}/road.glb`,
-
-      `${folder}/transparent buildings.glb`,
-
-      `${folder}/transparents sidewalk.glb`,
-
-      `${folder}/white wall.glb`,
-
-      `${folder}/palms.glb`,
-
-      `${folder}/frame-raw-14.glb`,
-
-      `${folder}/roof and walls.glb`,
-
-      `${folder}/stages.glb`
-
-    ];
-
-
-
-    console.log('dY"? Loading environment models:', models);
-
-
-
-    return models;
-
+    // Legacy environment models have been removed. 
+    // This list is now empty as environment is handled by SingleEnvironmentMesh.
+    return [];
   }, []);
 
 

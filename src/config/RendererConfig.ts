@@ -18,9 +18,10 @@ export const RendererConfig = {
     // Shadow Configuration (Tiered)
     shadows: {
         enabled: true, // Master switch
-        type: 'pcf', // 'pcf' | 'basic' | 'vsm'
+        type: 'pcf-soft', // Reverted to PCFSoft for stability (VSM crashed repeatedly)
         mapSize: PerfFlags.SHADOW_MAP_SIZE,
         bias: PerfFlags.SHADOW_BIAS,
+        normalBias: PerfFlags.SHADOW_NORMAL_BIAS,
         normalBias: PerfFlags.SHADOW_NORMAL_BIAS,
         maxExtent: PerfFlags.SHADOW_MAX_EXTENT,
         margin: PerfFlags.SHADOW_MARGIN,
@@ -34,12 +35,12 @@ export const RendererConfig = {
             },
             mobileHigh: {
                 castShadows: true,
-                mapSize: 1024,
+                mapSize: 2048, // Increased from 1024 for sharper shadows
                 allowPointLights: false,
             },
             desktopHigh: {
                 castShadows: true,
-                mapSize: 2048,
+                mapSize: 4096, // Increased from 2048 for crisp shadows
                 allowPointLights: true,
             },
         }

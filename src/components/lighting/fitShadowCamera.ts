@@ -17,6 +17,6 @@ export function fitShadowCameraToScene(scene: Scene, light: DirectionalLight) {
   light.shadow.camera.bottom = -half;
   light.shadow.camera.updateProjectionMatrix();
 
-  light.shadow.bias = -0.0001;
+  light.shadow.bias = -0.0005; // FIXED: Match project B for sharper shadows
   light.shadow.normalBias = 0.02;
 }

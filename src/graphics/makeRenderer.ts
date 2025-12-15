@@ -24,7 +24,7 @@ function createWebGLRenderer(canvas: HTMLCanvasElement, tier: string): THREE.Web
     antialias: false,
     powerPreference: 'default',
     logarithmicDepthBuffer: false,
-    preserveDrawingBuffer: false,
+    preserveDrawingBuffer: true, // FIXED: Align with App.tsx to prevent white flashing
     failIfMajorPerformanceCaveat: false,
     stencil: false,
     depth: true,
@@ -92,7 +92,13 @@ function configureRenderer(renderer: THREE.WebGLRenderer, canvas: HTMLCanvasElem
   }
 
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  // Dynamic shadow type from config
+  const shadowTypeStr = RendererConfig.shadows.type || 'pcf-soft';
+  if (shadowTypeStr === 'basic') renderer.shadowMap.type = THREE.BasicShadowMap;
+  else if (shadowTypeStr === 'pcf') renderer.shadowMap.type = THREE.PCFShadowMap;
+  else if (shadowTypeStr === 'vsm') renderer.shadowMap.type = THREE.VSMShadowMap;
+  else renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Default
+
   renderer.shadowMap.autoUpdate = true; // Ensure shadows update
 
   let DPR = 1.0;

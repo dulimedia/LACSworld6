@@ -1,14 +1,11 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect } from 'react';
 import * as THREE from 'three';
 import { useLoader, useThree } from '@react-three/fiber';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { configureGLTFLoader } from '../three/loaders';
 import { RendererConfig } from '../config/RendererConfig';
 import { makeFacesBehave } from '../utils/makeFacesBehave';
-import { fixInvertedFacesSelective } from '../utils/fixInvertedFacesSelective';
-import { simplifyGeometryForMobile, shouldSimplifyMesh, optimizeMeshForMobile } from '../utils/simplifyGeometry';
-import { PerfFlags } from '../perf/PerfFlags';
-import { log } from '../utils/debugFlags';
+import { optimizeMeshForMobile } from '../utils/simplifyGeometry';
 import { applyPolygonOffset } from '../materials/applyPolygonOffset';
 import { assetUrl } from '../lib/assets';
 import { optimizeMaterialTextures } from '../utils/textureUtils';
@@ -43,7 +40,45 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
       // 1. Geometry Fixes
       makeFacesBehave(scene, true);
 
-      // 2. Traverse and Optimize
+      // ---------------------------------------------------------
+      // PASS 1: ANALYSIS - Find "Latest" Version of Each Material
+      // ---------------------------------------------------------
+      const latestMaterials = new Map<string, THREE.Material>();
+
+      const getBaseNameAndId = (name: string) => {
+        // Matches "SomeMat.001", "Road.005", "Wall"
+        const match = name.match(/^(.*)\.(\d+)$/);
+        if (match) {
+          return { base: match[1], ver: parseInt(match[2], 10) };
+        }
+        return { base: name, ver: 0 };
+      };
+
+      scene.traverse((child) => {
+        if ((child as THREE.Mesh).isMesh) {
+          const mesh = child as THREE.Mesh;
+          const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+
+          materials.forEach((m: any) => {
+            if (!m.name) return;
+            const { base, ver } = getBaseNameAndId(m.name);
+            const currentBest = latestMaterials.get(base);
+
+            if (!currentBest) {
+              latestMaterials.set(base, m);
+            } else {
+              const { ver: currentVer } = getBaseNameAndId(currentBest.name);
+              if (ver > currentVer) {
+                latestMaterials.set(base, m);
+              }
+            }
+          });
+        }
+      });
+
+      // ---------------------------------------------------------
+      // PASS 2: ASSIGNMENT - Upgrade All Meshes to "Winner"
+      // ---------------------------------------------------------
       let meshCount = 0;
       scene.traverse((child) => {
         if ((child as THREE.Mesh).isMesh) {
@@ -58,70 +93,106 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
           // Shadow Logic
           if (shadowsEnabled) {
             const meshNameLower = (mesh.name || '').toLowerCase();
-            const mat = mesh.material as THREE.Material;
-            const matNameLower = (mat && mat.name) ? mat.name.toLowerCase() : '';
-
-            // Exclude risky transparent materials from shadows
-            const isRisky = meshNameLower.includes('transparent') ||
-              meshNameLower.includes('glass') ||
-              matNameLower.includes('transparent') ||
-              matNameLower.includes('sidewalk') ||
-              matNameLower.includes('window');
-
-            if (isRisky) {
+            // Basic Exclusions
+            if (meshNameLower.includes('transparent') || meshNameLower.includes('glass')) {
               mesh.castShadow = false;
               mesh.receiveShadow = false;
             } else {
               mesh.castShadow = true;
               mesh.receiveShadow = true;
             }
-          } else if (isMobile) {
-            mesh.castShadow = false;
-            mesh.receiveShadow = false;
-            if (shadowsEnabled) {
-              mat.shadowSide = THREE.FrontSide;
+          }
+
+          // Material Replacement / Upgrade Helper
+          const upgradeMaterial = (m: any) => {
+            const { base } = getBaseNameAndId(m.name);
+            const winner = latestMaterials.get(base) || m;
+
+            // Check if this material (or its base type) is one of the "broken" ones we want to fix
+            const lowerBase = base.toLowerCase();
+            const shouldFix = lowerBase.includes('raw') ||
+              lowerBase.includes('concrete') ||
+              lowerBase.includes('sidewalk') ||
+              lowerBase.includes('palm') ||
+              lowerBase.includes('road') ||
+              lowerBase.includes('wall') ||
+              lowerBase.includes('stage');
+
+            if (shouldFix) {
+              // Create CLEAN Standard Material from Winner's Props
+              // This removes junk like 'blending' but KEEPS the texture (map)
+              const newMat = new THREE.MeshStandardMaterial({
+                name: winner.name + '_OPTIMIZED',
+                color: winner.color || 0xffffff,
+                map: winner.map, // RESTORED TEXTURE from winner
+                transparent: winner.transparent,
+                opacity: winner.opacity,
+                side: THREE.DoubleSide
+              });
+
+              // Apply basic optimizations to the texture immediately
+              if (newMat.map) {
+                newMat.map.minFilter = THREE.LinearMipMapLinearFilter;
+                newMat.map.anisotropy = gl.capabilities.getMaxAnisotropy();
+              }
+
+              return newMat;
             }
 
-            // Polygon Offset for ground-like meshes to prevent z-fighting
-            const meshNameLower = (mesh.name || '').toLowerCase();
-            if (meshNameLower.includes('road') || meshNameLower.includes('plaza') ||
-              meshNameLower.includes('roof') || meshNameLower.includes('floor') ||
-              meshNameLower.includes('ground') || meshNameLower.includes('deck')) {
-              applyPolygonOffset(mat);
-            }
+            // Return original if not targeted for fix, but check polygon offset
+            return m;
+          };
 
-            // Mobile specific material reductions
-            if (isMobile) {
-              if (mat.normalMap) { mat.normalMap.dispose(); mat.normalMap = null; }
-              if (mat.roughnessMap) { mat.roughnessMap.dispose(); mat.roughnessMap = null; }
-              if (mat.metalnessMap) { mat.metalnessMap.dispose(); mat.metalnessMap = null; }
-              mat.envMapIntensity = RendererConfig.materials.envMapIntensity;
+          // Apply Upgrade
+          if (mesh.material) {
+            if (Array.isArray(mesh.material)) {
+              mesh.material = mesh.material.map(upgradeMaterial);
+            } else {
+              mesh.material = upgradeMaterial(mesh.material);
             }
+          }
 
-            // Ensure updates
-            if (!isMobile) {
-              mat.envMapIntensity = RendererConfig.materials.envMapIntensity;
-            }
+          // Shadows on Material & Polygon Offsetting
+          if (mesh.material) {
+            const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+            mats.forEach((m: any) => {
+              if (shadowsEnabled) m.shadowSide = THREE.FrontSide;
 
-            if (mat.map) mat.map.needsUpdate = true;
-            mat.needsUpdate = true;
-          });
-    }
-  }
+              // Polygon Offset for ground-like meshes to prevent z-fighting
+              const meshNameLower = (mesh.name || '').toLowerCase();
+              if (meshNameLower.includes('road') || meshNameLower.includes('plaza') ||
+                meshNameLower.includes('roof') || meshNameLower.includes('floor') ||
+                meshNameLower.includes('ground') || meshNameLower.includes('deck')) {
+                applyPolygonOffset(m);
+              }
+
+              // Mobile reductions
+              if (isMobile) {
+                m.envMapIntensity = RendererConfig.materials.envMapIntensity;
+                if (m.normalMap) m.normalMap = null;
+              } else {
+                m.envMapIntensity = RendererConfig.materials.envMapIntensity;
+              }
+
+              m.needsUpdate = true;
+            });
+          }
+
+        }
       });
 
-console.log(`✨ Environment Configuration Complete. Processed ${meshCount} meshes.`);
+      console.log(`✨ Environment Configured. Deduplicated & Upgraded ${meshCount} meshes.`);
 
-// Cleanup for Mobile
-if (isMobile) {
-  if ((window as any).gc) (window as any).gc();
-}
+      // Cleanup for Mobile
+      if (isMobile) {
+        if ((window as any).gc) (window as any).gc();
+      }
     }
   }, [fullEnv.scene, isMobile, shadowsEnabled]);
 
-return (
-  <>
-    {fullEnv.scene && <primitive object={fullEnv.scene} />}
-  </>
-);
+  return (
+    <>
+      {fullEnv.scene && <primitive object={fullEnv.scene} />}
+    </>
+  );
 }

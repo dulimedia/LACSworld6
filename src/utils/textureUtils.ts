@@ -5,8 +5,8 @@ import { log } from './debugFlags';
  * Configuration for texture resizing
  */
 const TEXTURE_OPTS = {
-    // Max dimension for textures (2048 is generally a good balance for desktop/high-end mobile)
-    MAX_SIZE: 2048,
+    // Max dimension for textures (1024 for aggressive optimization to fix washed-out appearance)
+    MAX_SIZE: 1024,
     // Quality for JPEG encoding if we were exporting, but for Three.js we draw to canvas
     // For offscreen canvas resize, we just control dimensions.
 };
