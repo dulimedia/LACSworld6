@@ -91,9 +91,9 @@ function configureRenderer(renderer: THREE.WebGLRenderer, canvas: HTMLCanvasElem
     console.warn('⚠️ Tone mapping validation failed', error);
   }
 
-  renderer.shadowMap.enabled = false;
-  renderer.shadowMap.type = THREE.PCFShadowMap;
-  renderer.shadowMap.autoUpdate = false;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.autoUpdate = true; // Ensure shadows update
 
   let DPR = 1.0;
   if (tier === 'mobile-high') DPR = Math.min(1.25, window.devicePixelRatio);

@@ -116,6 +116,11 @@ export function optimizeMaterialTextures(material: THREE.Material, maxSize: numb
 
     ALL_TEXTURE_KEYS.forEach(mapName => {
         if (mat[mapName]) {
+            // Skip lightmaps and AO maps to preserve baked shadow quality
+            if (mapName === 'lightMap' || mapName === 'aoMap' || mapName === 'shadowMap') {
+                return;
+            }
+
             const original = mat[mapName];
 
             // Check if it is actually a texture
