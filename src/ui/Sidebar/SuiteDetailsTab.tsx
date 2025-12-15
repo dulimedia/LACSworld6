@@ -43,7 +43,7 @@ function FloorplanPreview({ url, title, label, onShare }: { url: string, title: 
       <div className="space-y-2">
         <div className="relative rounded-lg overflow-hidden border border-black/10 bg-gray-50 aspect-video group-hover:shadow-md transition-all">
           {/* Use Object for PDF embedding as it is often more reliable than embed for this use case */}
-          <object data={`${url}#view=FitH&toolbar=0&navpanes=0&scrollbar=0`} type="application/pdf" className="w-full h-full cursor-pointer pointer-events-none">
+          <object data={`${url}#view=Fit&toolbar=0&navpanes=0&scrollbar=0`} type="application/pdf" className="w-full h-full cursor-pointer pointer-events-none">
             {/* Fallback to icon if PDF fails to load in object */}
             <div className="w-full h-full flex flex-col items-center justify-center bg-red-50 text-red-500">
               <FileText size={48} />
@@ -58,7 +58,7 @@ function FloorplanPreview({ url, title, label, onShare }: { url: string, title: 
                Let's enable pointer events but keep a "Open New Tab" overlay.
            */}
           <a
-            href={url}
+            href={`${url}#view=Fit`}
             target="_blank"
             rel="noreferrer"
             className="absolute inset-0 bg-transparent flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-black/10"
