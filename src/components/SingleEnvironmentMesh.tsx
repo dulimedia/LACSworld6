@@ -430,171 +430,98 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
 
   // Process stages model when loaded
 
+  // Process stages model when loaded
   useEffect(() => {
-
     const scene = stages.scene;
-
     if (scene) {
-
       console.log('dY"? Processing Stages model...');
-
       if (isMobile) console.log('dY"? Mobile: Processing Stages with optimizations');
 
-
-
       makeFacesBehave(scene);
-
-
 
       let meshCount = 0;
 
       scene.traverse((child) => {
-
         if ((child as THREE.Mesh).isMesh) {
-
           const mesh = child as THREE.Mesh;
-
           meshCount++;
 
-
-
           mesh.visible = true;
-
           mesh.frustumCulled = false;
 
+          if (mesh.material) {
+            const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+            materials.forEach(mat => {
+              mat.opacity = 1.0;
+              mat.side = THREE.FrontSide;
+              mat.depthWrite = true;
+              mat.depthTest = true;
+              mat.needsUpdate = true;
 
-          mat.opacity = 1.0;
+              // OPTIMIZATION: Texture resizing (Re-enabled)
+              optimizeMaterialTextures(mat, 1024);
 
-          mat.side = THREE.FrontSide;
+              if (shadowsEnabled) {
+                mat.shadowSide = THREE.FrontSide;
+              }
+            });
+          }
 
-          mat.depthWrite = true;
+          if (shadowsEnabled) {
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+          } else if (isMobile) {
+            mesh.castShadow = false;
+            mesh.receiveShadow = false;
 
-          mat.depthTest = true;
-
-          mat.needsUpdate = true;
-
-        });
-
-    }
-
-
-
-    if (shadowsEnabled) {
-
-      mesh.castShadow = true;
-
-      mesh.receiveShadow = true;
-
-
-
-      if (mesh.material) {
-
-        if (Array.isArray(mesh.material)) {
-
-          mesh.material.forEach(mat => {
-
-            mat.shadowSide = THREE.FrontSide;
-
-          });
-
-        } else {
-
-          mesh.material.shadowSide = THREE.FrontSide;
-
+            if (shouldSimplifyMesh(mesh, isMobile) && mesh.geometry) {
+              const originalVerts = mesh.geometry.attributes.position.count;
+              mesh.geometry = simplifyGeometryForMobile(mesh.geometry, 0.7);
+              const newVerts = mesh.geometry.attributes.position.count;
+              console.log(`dY"% Stages simplified ${mesh.name}: ${originalVerts} ?+' ${newVerts} vertices`);
+            }
+          }
         }
-
-      }
-
-    } else if (isMobile) {
-
-      mesh.castShadow = false;
-
-      mesh.receiveShadow = false;
-
-
-
-      if (shouldSimplifyMesh(mesh, isMobile) && mesh.geometry) {
-
-        const originalVerts = mesh.geometry.attributes.position.count;
-
-        mesh.geometry = simplifyGeometryForMobile(mesh.geometry, 0.7);
-
-        const newVerts = mesh.geometry.attributes.position.count;
-
-        console.log(`dY"% Stages simplified ${mesh.name}: ${originalVerts} ?+' ${newVerts} vertices`);
-
-      }
-
-    }
-
-  }
-
       });
 
+      console.log('?o. Stages configured: ' + meshCount + ' meshes, all set to visible');
 
+      if (isMobile) {
+        console.log('dY-`?,? Mobile: Final cleanup after Stages processing');
+        if ((window as any).gc) {
+          (window as any).gc();
+        }
 
-console.log('?o. Stages configured: ' + meshCount + ' meshes, all set to visible');
+        if (navigator && (navigator as any).deviceMemory) {
+          console.log(`dY"S Device memory: ${(navigator as any).deviceMemory}GB`);
+        }
 
+        if (gl && (gl as any).info) {
+          const info = (gl as any).info;
+          console.log('dY"S WebGL memory:', {
+            geometries: info.memory.geometries,
+            textures: info.memory.textures,
+            programs: info.programs?.length || 0
+          });
+        }
 
-
-if (isMobile) {
-
-  console.log('dY-`?,? Mobile: Final cleanup after Stages processing');
-
-  if ((window as any).gc) {
-
-    (window as any).gc();
-
-  }
-
-
-
-  if (navigator && (navigator as any).deviceMemory) {
-
-    console.log(`dY"S Device memory: ${(navigator as any).deviceMemory}GB`);
-
-  }
-
-
-
-  if (gl && gl.info) {
-
-    const info = gl.info;
-
-    console.log('dY"S WebGL memory:', {
-
-      geometries: info.memory.geometries,
-
-      textures: info.memory.textures,
-
-      programs: info.programs?.length || 0
-
-    });
-
-  }
-
-
-
-  console.log('?o. Mobile: All models loaded and optimized successfully!');
-
-}
-
-  }
-
+        console.log('?o. Mobile: All models loaded and optimized successfully!');
+      }
+    }
   }, [stages.scene, isMobile, gl]);
 
 
 
-return (
-  <>
-    {otherScenes.map((scene, index) => (
-      <primitive key={scene.uuid} object={scene} />
-    ))}
-    {frame.scene && <primitive object={frame.scene} />}
-    {roof.scene && <primitive object={roof.scene} />}
-    {stages.scene && <primitive object={stages.scene} />}
-  </>
-);
+  return (
+    <>
+      {otherScenes.map((scene, index) => (
+        <primitive key={scene.uuid} object={scene} />
+      ))}
+      {frame.scene && <primitive object={frame.scene} />}
+      {roof.scene && <primitive object={roof.scene} />}
+      {stages.scene && <primitive object={stages.scene} />}
+    </>
+  );
 }
 
 function MobileEnvironment() {
