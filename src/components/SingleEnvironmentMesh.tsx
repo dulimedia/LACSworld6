@@ -84,8 +84,8 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
           if (mesh.material) {
             const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
             materials.forEach((mat: any) => {
-              // Texture Resizing (Fixes white flash on weak GPUs)
-              optimizeMaterialTextures(mat, 1024);
+              // Texture Resizing (Skipped: User optimized GLB to 2K/1K, runtime resize causing shader errors)
+              // optimizeMaterialTextures(mat, 1024);
 
               // Shadow Side
               if (shadowsEnabled) {
