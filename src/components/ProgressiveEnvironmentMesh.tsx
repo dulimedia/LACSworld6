@@ -42,8 +42,8 @@ export function ProgressiveEnvironmentMesh() {
         if (mesh.material) {
           const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
           materials.forEach((mat: any) => {
-            // Forced texture resizing (fixes Frame 4K issues)
-            optimizeMaterialTextures(mat, 2048);
+            // Disabled texture optimization to restore visual quality
+            // optimizeMaterialTextures(mat, 2048);
 
             if (mat.normalMap) {
               mat.normalMap.dispose();

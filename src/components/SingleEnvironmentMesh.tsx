@@ -222,75 +222,64 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
 
           if (mesh.material) {
 
-            const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-
-            materials.forEach((mat: any) => {
-              // Optimize textures for ALL Tiers (Desktop & Mobile)
-              // Aggressive 1024 limit to solve 2GB memory usage
-              optimizeMaterialTextures(mat, 1024);
-
-              if (shadowsEnabled) {
-
-                mat.shadowSide = THREE.FrontSide;
-
-              }
+          }
 
 
 
-              const meshNameLower = (mesh.name || '').toLowerCase();
+          const meshNameLower = (mesh.name || '').toLowerCase();
 
-              if (meshNameLower.includes('road') || meshNameLower.includes('plaza') ||
+          if (meshNameLower.includes('road') || meshNameLower.includes('plaza') ||
 
-                meshNameLower.includes('roof') || meshNameLower.includes('floor') ||
+            meshNameLower.includes('roof') || meshNameLower.includes('floor') ||
 
-                meshNameLower.includes('ground') || meshNameLower.includes('deck')) {
+            meshNameLower.includes('ground') || meshNameLower.includes('deck')) {
 
-                applyPolygonOffset(mat);
-
-              }
-
-
-
-              if (isMobile) {
-
-                if (mat.normalMap) {
-
-                  mat.normalMap.dispose();
-
-                  mat.normalMap = null as any;
-
-                }
-
-                if (mat.roughnessMap) {
-
-                  mat.roughnessMap.dispose();
-
-                  mat.roughnessMap = null as any;
-
-                }
-
-                if (mat.metalnessMap) {
-                  mat.metalnessMap.dispose();
-                  mat.metalnessMap = null as any;
-                }
-                // Use global config for intensity
-                mat.envMapIntensity = RendererConfig.materials.envMapIntensity;
-              }
-
-              // Also apply to desktop to ensure darkness
-              if (!isMobile) {
-                mat.envMapIntensity = RendererConfig.materials.envMapIntensity;
-              }
-
-
-
-              if (mat.map) mat.map.needsUpdate = true;
-
-              mat.needsUpdate = true;
-
-            });
+            applyPolygonOffset(mat);
 
           }
+
+
+
+          if (isMobile) {
+
+            if (mat.normalMap) {
+
+              mat.normalMap.dispose();
+
+              mat.normalMap = null as any;
+
+            }
+
+            if (mat.roughnessMap) {
+
+              mat.roughnessMap.dispose();
+
+              mat.roughnessMap = null as any;
+
+            }
+
+            if (mat.metalnessMap) {
+              mat.metalnessMap.dispose();
+              mat.metalnessMap = null as any;
+            }
+            // Use global config for intensity
+            mat.envMapIntensity = RendererConfig.materials.envMapIntensity;
+          }
+
+          // Also apply to desktop to ensure darkness
+          if (!isMobile) {
+            mat.envMapIntensity = RendererConfig.materials.envMapIntensity;
+          }
+
+
+
+          if (mat.map) mat.map.needsUpdate = true;
+
+          mat.needsUpdate = true;
+
+        });
+
+    }
 
         }
 
@@ -300,7 +289,86 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
 
 
 
+if (isMobile) {
+
+  if ((window as any).gc) {
+
+    (window as any).gc();
+
+  }
+
+  if (window.requestIdleCallback) {
+
+    window.requestIdleCallback(() => {
+
+      console.log('dYO? Mobile: Idle cleanup after environment processing');
+
+    });
+
+  }
+
+}
+
+  }, [otherScenes, isMobile, shadowsEnabled]);
+
+
+
+// Process frame model when loaded
+
+useEffect(() => {
+
+  const scene = frame.scene;
+
+  if (scene) {
+
+    console.log('dY"? Processing Frame model...');
+
+    if (isMobile) console.log('dY"? Mobile: Processing Frame with optimizations');
+
+
+
+    makeFacesBehave(scene);
+
+    log.verbose('dY"? Running selective face fixer on Frame...');
+
+    fixInvertedFacesSelective(scene);
+
+
+
     if (isMobile) {
+
+      scene.traverse((child) => {
+        if ((child as THREE.Mesh).isMesh) {
+          const mesh = child as THREE.Mesh;
+
+          // FORCE TEXTURE OPTIMIZATION FOR FRAME
+          if (mesh.material) {
+            const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+            materials.forEach(mat => optimizeMaterialTextures(mat, 2048));
+          }
+
+          if (isMobile) {
+            mesh.castShadow = false;
+            mesh.receiveShadow = false;
+
+            if (shouldSimplifyMesh(mesh, isMobile) && mesh.geometry) {
+              // ... existing simplification logic ...
+              const originalVerts = mesh.geometry.attributes.position.count;
+              mesh.geometry = simplifyGeometryForMobile(mesh.geometry, 0.7);
+              const newVerts = mesh.geometry.attributes.position.count;
+              console.log(`dY"% Frame simplified ${mesh.name}: ${originalVerts} ?+' ${newVerts} vertices`);
+            }
+          }
+        }
+      });
+
+    }
+
+
+
+    if (isMobile) {
+
+      console.log('dY-`?,? Mobile: Cleanup after Frame processing');
 
       if ((window as any).gc) {
 
@@ -308,350 +376,260 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
 
       }
 
-      if (window.requestIdleCallback) {
-
-        window.requestIdleCallback(() => {
-
-          console.log('dYO? Mobile: Idle cleanup after environment processing');
-
-        });
-
-      }
-
     }
 
-  }, [otherScenes, isMobile, shadowsEnabled]);
+  }
+
+}, [frame.scene, isMobile]);
 
 
 
-  // Process frame model when loaded
+// Process roof model when loaded
 
-  useEffect(() => {
+useEffect(() => {
 
-    const scene = frame.scene;
+  const scene = roof.scene;
 
-    if (scene) {
+  if (scene) {
 
-      console.log('dY"? Processing Frame model...');
+    console.log('dY"? Processing Roof model...');
 
-      if (isMobile) console.log('dY"? Mobile: Processing Frame with optimizations');
-
-
-
-      makeFacesBehave(scene);
-
-      log.verbose('dY"? Running selective face fixer on Frame...');
-
-      fixInvertedFacesSelective(scene);
+    if (isMobile) console.log('dY"? Mobile: Processing Roof with optimizations');
 
 
 
-      if (isMobile) {
-
-        scene.traverse((child) => {
-          if ((child as THREE.Mesh).isMesh) {
-            const mesh = child as THREE.Mesh;
-
-            // FORCE TEXTURE OPTIMIZATION FOR FRAME
-            if (mesh.material) {
-              const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-              materials.forEach(mat => optimizeMaterialTextures(mat, 2048));
-            }
-
-            if (isMobile) {
-              mesh.castShadow = false;
-              mesh.receiveShadow = false;
-
-              if (shouldSimplifyMesh(mesh, isMobile) && mesh.geometry) {
-                // ... existing simplification logic ...
-                const originalVerts = mesh.geometry.attributes.position.count;
-                mesh.geometry = simplifyGeometryForMobile(mesh.geometry, 0.7);
-                const newVerts = mesh.geometry.attributes.position.count;
-                console.log(`dY"% Frame simplified ${mesh.name}: ${originalVerts} ?+' ${newVerts} vertices`);
-              }
-            }
-          }
-        });
-
-      }
+    makeFacesBehave(scene);
 
 
 
-      if (isMobile) {
+    scene.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        const mesh = child as THREE.Mesh;
 
-        console.log('dY-`?,? Mobile: Cleanup after Frame processing');
-
-        if ((window as any).gc) {
-
-          (window as any).gc();
-
+        // FORCE TEXTURE OPTIMIZATION FOR ROOF
+        if (mesh.material) {
+          const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+          materials.forEach(mat => optimizeMaterialTextures(mat, 2048));
         }
 
-      }
+        if (shadowsEnabled) {
+          mesh.castShadow = true;
+          mesh.receiveShadow = true;
 
-    }
-
-  }, [frame.scene, isMobile]);
-
-
-
-  // Process roof model when loaded
-
-  useEffect(() => {
-
-    const scene = roof.scene;
-
-    if (scene) {
-
-      console.log('dY"? Processing Roof model...');
-
-      if (isMobile) console.log('dY"? Mobile: Processing Roof with optimizations');
-
-
-
-      makeFacesBehave(scene);
-
-
-
-      scene.traverse((child) => {
-        if ((child as THREE.Mesh).isMesh) {
-          const mesh = child as THREE.Mesh;
-
-          // FORCE TEXTURE OPTIMIZATION FOR ROOF
           if (mesh.material) {
-            const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-            materials.forEach(mat => optimizeMaterialTextures(mat, 2048));
+
+            if (Array.isArray(mesh.material)) {
+
+              mesh.material.forEach(mat => {
+
+                mat.shadowSide = THREE.FrontSide;
+
+              });
+
+            } else {
+
+              mesh.material.shadowSide = THREE.FrontSide;
+
+            }
+
           }
 
-          if (shadowsEnabled) {
-            mesh.castShadow = true;
-            mesh.receiveShadow = true;
+        } else if (isMobile) {
 
-            if (mesh.material) {
+          mesh.castShadow = false;
 
-              if (Array.isArray(mesh.material)) {
-
-                mesh.material.forEach(mat => {
-
-                  mat.shadowSide = THREE.FrontSide;
-
-                });
-
-              } else {
-
-                mesh.material.shadowSide = THREE.FrontSide;
-
-              }
-
-            }
-
-          } else if (isMobile) {
-
-            mesh.castShadow = false;
-
-            mesh.receiveShadow = false;
+          mesh.receiveShadow = false;
 
 
 
-            if (shouldSimplifyMesh(mesh, isMobile) && mesh.geometry) {
+          if (shouldSimplifyMesh(mesh, isMobile) && mesh.geometry) {
 
-              const originalVerts = mesh.geometry.attributes.position.count;
+            const originalVerts = mesh.geometry.attributes.position.count;
 
-              mesh.geometry = simplifyGeometryForMobile(mesh.geometry, 0.7);
+            mesh.geometry = simplifyGeometryForMobile(mesh.geometry, 0.7);
 
-              const newVerts = mesh.geometry.attributes.position.count;
+            const newVerts = mesh.geometry.attributes.position.count;
 
-              console.log(`dY"% Roof simplified ${mesh.name}: ${originalVerts} ?+' ${newVerts} vertices`);
-
-            }
+            console.log(`dY"% Roof simplified ${mesh.name}: ${originalVerts} ?+' ${newVerts} vertices`);
 
           }
 
         }
+
+      }
+
+    });
+
+
+
+    if (isMobile) {
+
+      console.log('dY-`?,? Mobile: Cleanup after Roof processing');
+
+      if ((window as any).gc) {
+
+        (window as any).gc();
+
+      }
+
+    }
+
+  }
+
+}, [roof.scene, isMobile]);
+
+
+
+// Process stages model when loaded
+
+useEffect(() => {
+
+  const scene = stages.scene;
+
+  if (scene) {
+
+    console.log('dY"? Processing Stages model...');
+
+    if (isMobile) console.log('dY"? Mobile: Processing Stages with optimizations');
+
+
+
+    makeFacesBehave(scene);
+
+
+
+    let meshCount = 0;
+
+    scene.traverse((child) => {
+
+      if ((child as THREE.Mesh).isMesh) {
+
+        const mesh = child as THREE.Mesh;
+
+        meshCount++;
+
+
+
+        mesh.visible = true;
+
+        mesh.frustumCulled = false;
+
+
+        mat.opacity = 1.0;
+
+        mat.side = THREE.FrontSide;
+
+        mat.depthWrite = true;
+
+        mat.depthTest = true;
+
+        mat.needsUpdate = true;
+
+      });
+
+  }
+
+
+
+  if (shadowsEnabled) {
+
+    mesh.castShadow = true;
+
+    mesh.receiveShadow = true;
+
+
+
+    if (mesh.material) {
+
+      if (Array.isArray(mesh.material)) {
+
+        mesh.material.forEach(mat => {
+
+          mat.shadowSide = THREE.FrontSide;
+
+        });
+
+      } else {
+
+        mesh.material.shadowSide = THREE.FrontSide;
+
+      }
+
+    }
+
+  } else if (isMobile) {
+
+    mesh.castShadow = false;
+
+    mesh.receiveShadow = false;
+
+
+
+    if (shouldSimplifyMesh(mesh, isMobile) && mesh.geometry) {
+
+      const originalVerts = mesh.geometry.attributes.position.count;
+
+      mesh.geometry = simplifyGeometryForMobile(mesh.geometry, 0.7);
+
+      const newVerts = mesh.geometry.attributes.position.count;
+
+      console.log(`dY"% Stages simplified ${mesh.name}: ${originalVerts} ?+' ${newVerts} vertices`);
+
+    }
+
+  }
+
+}
 
       });
 
 
 
-      if (isMobile) {
+console.log('?o. Stages configured: ' + meshCount + ' meshes, all set to visible');
 
-        console.log('dY-`?,? Mobile: Cleanup after Roof processing');
 
-        if ((window as any).gc) {
 
-          (window as any).gc();
+if (isMobile) {
 
-        }
+  console.log('dY-`?,? Mobile: Final cleanup after Stages processing');
 
-      }
+  if ((window as any).gc) {
 
-    }
+    (window as any).gc();
 
-  }, [roof.scene, isMobile]);
+  }
 
 
 
-  // Process stages model when loaded
+  if (navigator && (navigator as any).deviceMemory) {
 
-  useEffect(() => {
+    console.log(`dY"S Device memory: ${(navigator as any).deviceMemory}GB`);
 
-    const scene = stages.scene;
+  }
 
-    if (scene) {
 
-      console.log('dY"? Processing Stages model...');
 
-      if (isMobile) console.log('dY"? Mobile: Processing Stages with optimizations');
+  if (gl && gl.info) {
 
+    const info = gl.info;
 
+    console.log('dY"S WebGL memory:', {
 
-      makeFacesBehave(scene);
+      geometries: info.memory.geometries,
 
+      textures: info.memory.textures,
 
+      programs: info.programs?.length || 0
 
-      let meshCount = 0;
+    });
 
-      scene.traverse((child) => {
+  }
 
-        if ((child as THREE.Mesh).isMesh) {
 
-          const mesh = child as THREE.Mesh;
 
-          meshCount++;
+  console.log('?o. Mobile: All models loaded and optimized successfully!');
 
-
-
-          mesh.visible = true;
-
-          mesh.frustumCulled = false;
-
-
-
-          if (mesh.material) {
-            const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-            materials.forEach((mat: any) => {
-              // FORCE TEXTURE OPTIMIZATION FOR STAGES
-              optimizeMaterialTextures(mat, 2048);
-
-              mat.visible = true;
-
-              mat.transparent = false;
-
-              mat.opacity = 1.0;
-
-              mat.side = THREE.FrontSide;
-
-              mat.depthWrite = true;
-
-              mat.depthTest = true;
-
-              mat.needsUpdate = true;
-
-            });
-
-          }
-
-
-
-          if (shadowsEnabled) {
-
-            mesh.castShadow = true;
-
-            mesh.receiveShadow = true;
-
-
-
-            if (mesh.material) {
-
-              if (Array.isArray(mesh.material)) {
-
-                mesh.material.forEach(mat => {
-
-                  mat.shadowSide = THREE.FrontSide;
-
-                });
-
-              } else {
-
-                mesh.material.shadowSide = THREE.FrontSide;
-
-              }
-
-            }
-
-          } else if (isMobile) {
-
-            mesh.castShadow = false;
-
-            mesh.receiveShadow = false;
-
-
-
-            if (shouldSimplifyMesh(mesh, isMobile) && mesh.geometry) {
-
-              const originalVerts = mesh.geometry.attributes.position.count;
-
-              mesh.geometry = simplifyGeometryForMobile(mesh.geometry, 0.7);
-
-              const newVerts = mesh.geometry.attributes.position.count;
-
-              console.log(`dY"% Stages simplified ${mesh.name}: ${originalVerts} ?+' ${newVerts} vertices`);
-
-            }
-
-          }
-
-        }
-
-      });
-
-
-
-      console.log('?o. Stages configured: ' + meshCount + ' meshes, all set to visible');
-
-
-
-      if (isMobile) {
-
-        console.log('dY-`?,? Mobile: Final cleanup after Stages processing');
-
-        if ((window as any).gc) {
-
-          (window as any).gc();
-
-        }
-
-
-
-        if (navigator && (navigator as any).deviceMemory) {
-
-          console.log(`dY"S Device memory: ${(navigator as any).deviceMemory}GB`);
-
-        }
-
-
-
-        if (gl && gl.info) {
-
-          const info = gl.info;
-
-          console.log('dY"S WebGL memory:', {
-
-            geometries: info.memory.geometries,
-
-            textures: info.memory.textures,
-
-            programs: info.programs?.length || 0
-
-          });
-
-        }
-
-
-
-        console.log('?o. Mobile: All models loaded and optimized successfully!');
-
-      }
+}
 
     }
 
@@ -659,16 +637,16 @@ export function SingleEnvironmentMesh({ tier }: SingleEnvironmentMeshProps) {
 
 
 
-  return (
-    <>
-      {otherScenes.map((scene, index) => (
-        <primitive key={scene.uuid} object={scene} />
-      ))}
-      {frame.scene && <primitive object={frame.scene} />}
-      {roof.scene && <primitive object={roof.scene} />}
-      {stages.scene && <primitive object={stages.scene} />}
-    </>
-  );
+return (
+  <>
+    {otherScenes.map((scene, index) => (
+      <primitive key={scene.uuid} object={scene} />
+    ))}
+    {frame.scene && <primitive object={frame.scene} />}
+    {roof.scene && <primitive object={roof.scene} />}
+    {stages.scene && <primitive object={stages.scene} />}
+  </>
+);
 }
 
 function MobileEnvironment() {
@@ -714,86 +692,74 @@ function MobileEnvironment() {
         if (mesh.material) {
           // Optimize textures to reduce memory usage
           // Use 2048 for desktop high quality, could specific lower for mobile if needed
-          const maxTextureSize = 1024;
-
-          const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-          materials.forEach((mat: any) => {
-            // Optimize textures first
-            optimizeMaterialTextures(mat, maxTextureSize);
-
-            if (mat.normalMap) {
-              mat.normalMap.dispose();
-              mat.normalMap = null;
-            }
-            if (mat.roughnessMap) {
-              mat.roughnessMap.dispose();
-              mat.roughnessMap = null;
-            }
-            if (mat.metalnessMap) {
-              mat.metalnessMap.dispose();
-              mat.metalnessMap = null;
-            }
-            mat.envMapIntensity = 0.8;
-            mat.needsUpdate = true;
-          });
+          mat.roughnessMap.dispose();
+          mat.roughnessMap = null;
         }
-      }
+        if (mat.metalnessMap) {
+          mat.metalnessMap.dispose();
+          mat.metalnessMap = null;
+        }
+        mat.envMapIntensity = 0.8;
+        mat.needsUpdate = true;
+      });
+  }
+}
     });
   };
 
-  useEffect(() => {
-    if (road.scene) optimizeModel(road.scene);
-  }, [road.scene]);
+useEffect(() => {
+  if (road.scene) optimizeModel(road.scene);
+}, [road.scene]);
 
-  useEffect(() => {
-    if (hqSidewalk.scene) optimizeModel(hqSidewalk.scene);
-  }, [hqSidewalk.scene]);
+useEffect(() => {
+  if (hqSidewalk.scene) optimizeModel(hqSidewalk.scene);
+}, [hqSidewalk.scene]);
 
-  useEffect(() => {
-    if (whiteWall.scene) optimizeModel(whiteWall.scene);
-  }, [whiteWall.scene]);
+useEffect(() => {
+  if (whiteWall.scene) optimizeModel(whiteWall.scene);
+}, [whiteWall.scene]);
 
-  useEffect(() => {
-    if (frame.scene) optimizeModel(frame.scene);
-  }, [frame.scene]);
+useEffect(() => {
+  if (frame.scene) optimizeModel(frame.scene);
+}, [frame.scene]);
 
-  useEffect(() => {
-    if (transparentSidewalk.scene) optimizeModel(transparentSidewalk.scene);
-  }, [transparentSidewalk.scene]);
+useEffect(() => {
+  if (transparentSidewalk.scene) optimizeModel(transparentSidewalk.scene);
+}, [transparentSidewalk.scene]);
 
-  useEffect(() => {
-    if (transparentBuildings.scene) optimizeModel(transparentBuildings.scene);
-  }, [transparentBuildings.scene]);
+useEffect(() => {
+  if (transparentBuildings.scene) optimizeModel(transparentBuildings.scene);
+}, [transparentBuildings.scene]);
 
-  useEffect(() => {
-    if (accessory.scene) optimizeModel(accessory.scene);
-  }, [accessory.scene]);
+useEffect(() => {
+  if (accessory.scene) optimizeModel(accessory.scene);
+}, [accessory.scene]);
 
-  useEffect(() => {
-    if (palms.scene) optimizeModel(palms.scene);
-  }, [palms.scene]);
+useEffect(() => {
+  if (palms.scene) optimizeModel(palms.scene);
+}, [palms.scene]);
 
-  useEffect(() => {
-    if (stages.scene) optimizeModel(stages.scene);
-  }, [stages.scene]);
+useEffect(() => {
+  if (stages.scene) optimizeModel(stages.scene);
+}, [stages.scene]);
 
-  useEffect(() => {
-    if (roof.scene) optimizeModel(roof.scene);
-  }, [roof.scene]);
+useEffect(() => {
+  if (roof.scene) optimizeModel(roof.scene);
+}, [roof.scene]);
 
-  return (
-    <>
-      {road.scene && <primitive object={road.scene} />}
-      {hqSidewalk.scene && <primitive object={hqSidewalk.scene} />}
-      {whiteWall.scene && <primitive object={whiteWall.scene} />}
-      {transparentSidewalk.scene && <primitive object={transparentSidewalk.scene} />}
-      {transparentBuildings.scene && <primitive object={transparentBuildings.scene} />}
-      {accessory.scene && <primitive object={accessory.scene} />}
-      {frame.scene && <primitive object={frame.scene} />}
-      {palms.scene && <primitive object={palms.scene} />}
-      {stages.scene && <primitive object={stages.scene} />}
-      {roof.scene && <primitive object={roof.scene} />}
-    </>
-  );
+return (
+  <>
+    {road.scene && <primitive object={road.scene} />}
+    {hqSidewalk.scene && <primitive object={hqSidewalk.scene} />}
+    {whiteWall.scene && <primitive object={whiteWall.scene} />}
+    {transparentSidewalk.scene && <primitive object={transparentSidewalk.scene} />}
+    {transparentBuildings.scene && <primitive object={transparentBuildings.scene} />}
+    {accessory.scene && <primitive object={accessory.scene} />}
+    {frame.scene && <primitive object={frame.scene} />}
+    {palms.scene && <primitive object={palms.scene} />}
+    {stages.scene && <primitive object={stages.scene} />}
+    {roof.scene && <primitive object={roof.scene} />}
+  </>
+);
 }
 
